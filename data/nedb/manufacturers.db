@@ -1,0 +1,10 @@
+{"name":"Delta","name_en":"Delta","device_types":["plc","hmi"],"sort_order":99,"_id":"18tl5SAkbXZ1LZyS"}
+{"name":"KEYENCE","name_en":"KEYENCE","device_types":["plc","hmi"],"sort_order":99,"_id":"Bp5lswjDa1zySvSG"}
+{"name":"西门子","name_en":"Siemens","device_types":["plc","hmi"],"sort_order":1,"_id":"OylFdwiF6SWyamyJ"}
+{"name":"三菱","name_en":"Mitsubishi","device_types":["plc","hmi"],"sort_order":2,"_id":"Z5MMXRUtY9fpu798"}
+{"name":"欧姆龙","name_en":"Omron","device_types":["plc","hmi"],"sort_order":3,"_id":"ZyU9IpmtaF19OKL8"}
+{"name":"施耐德","name_en":"Schneider","device_types":["plc","hmi"],"sort_order":4,"_id":"wDudezrSQhFLXtHw"}
+{"name":"Other","name_en":"Other","device_types":["plc","hmi"],"sort_order":99,"_id":"zlH9VJhftHC4cpuc"}
+{"$$indexCreated":{"fieldName":"name_en","unique":true,"sparse":false}}
+{"$$indexCreated":{"fieldName":"device_types","unique":false,"sparse":false}}
+{"$$indexCreated":{"fieldName":"sort_order","unique":false,"sparse":false}}

@@ -1,0 +1,15 @@
+{"manufacturer_id":"Z5MMXRUtY9fpu798","name":"FX","name_en":"FX","_id":"6Tji7Nlm9hyoitXD","manufacturer_name":"Mitsubishi"}
+{"manufacturer_id":"Bp5lswjDa1zySvSG","name":"KV-RX","name_en":"KV-RX","_id":"9oKYjUxCqrM4jws2","manufacturer_name":"KEYENCE"}
+{"manufacturer_id":"Bp5lswjDa1zySvSG","name":"KV-Nano","name_en":"KV-Nano","_id":"AjihypdaJuDJGo4n","manufacturer_name":"KEYENCE"}
+{"manufacturer_id":"OylFdwiF6SWyamyJ","name":"S7-1200","name_en":"S7-1200","_id":"IP4HRCdeionrL5wL","manufacturer_name":"Siemens"}
+{"manufacturer_id":"wDudezrSQhFLXtHw","name":"Modicon M200","name_en":"Modicon M200","_id":"K1XTSeYKO8zvEXVn","manufacturer_name":"Schneider"}
+{"manufacturer_id":"18tl5SAkbXZ1LZyS","name":"DVP-SS2","name_en":"DVP-SS2","_id":"NuBNFwwLXkqDnBOP","manufacturer_name":"Delta"}
+{"manufacturer_id":"OylFdwiF6SWyamyJ","name":"S7-1500","name_en":"S7-1500","_id":"WyL3EL3ckIJJYspd","manufacturer_name":"Siemens"}
+{"manufacturer_id":"18tl5SAkbXZ1LZyS","name":"AS","name_en":"AS","_id":"a4Q0hHBWQfmlxNOw","manufacturer_name":"Delta"}
+{"manufacturer_id":"zlH9VJhftHC4cpuc","name":"Custom","name_en":"Custom","_id":"i2JPtWGNtGQnUh4i","manufacturer_name":"Other"}
+{"manufacturer_id":"ZyU9IpmtaF19OKL8","name":"CJ2","name_en":"CJ2","_id":"kMCZJnyRZwpjuGe2","manufacturer_name":"Omron"}
+{"manufacturer_id":"ZyU9IpmtaF19OKL8","name":"CP1","name_en":"CP1","_id":"qvkW4TI3TBVvz6Ph","manufacturer_name":"Omron"}
+{"manufacturer_id":"OylFdwiF6SWyamyJ","name":"S7-200","name_en":"S7-200","_id":"rie2X8uBLF7ktnKx","manufacturer_name":"Siemens"}
+{"manufacturer_id":"Z5MMXRUtY9fpu798","name":"Q","name_en":"Q","_id":"udkYEtEAXMwbtiGK","manufacturer_name":"Mitsubishi"}
+{"$$indexCreated":{"fieldName":"manufacturer_id","unique":false,"sparse":false}}
+{"$$indexCreated":{"fieldName":"type","unique":false,"sparse":false}}

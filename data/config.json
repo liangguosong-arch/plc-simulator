@@ -1,0 +1,626 @@
+{
+  "variables": [
+    {
+      "id": "var-x0",
+      "label": "启动按钮",
+      "type": "input",
+      "address": "X0",
+      "dataType": "BOOL",
+      "description": "系统启动按钮",
+      "accessLevel": "read",
+      "simulationMode": "manual",
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 1
+      },
+      "manualValue": false,
+      "currentValue": false
+    },
+    {
+      "id": "var-x1",
+      "label": "停止按钮",
+      "type": "input",
+      "address": "X1",
+      "dataType": "BOOL",
+      "description": "系统停止按钮",
+      "accessLevel": "read",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-x2",
+      "label": "急停按钮",
+      "type": "input",
+      "address": "X2",
+      "dataType": "BOOL",
+      "description": "紧急停止按钮",
+      "accessLevel": "read",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-x3",
+      "label": "模式选择-自动",
+      "type": "input",
+      "address": "X3",
+      "dataType": "BOOL",
+      "description": "自动模式选择开关",
+      "accessLevel": "read",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-x4",
+      "label": "模式选择-手动",
+      "type": "input",
+      "address": "X4",
+      "dataType": "BOOL",
+      "description": "手动模式选择开关",
+      "accessLevel": "read",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y0",
+      "label": "输送线运行",
+      "type": "output",
+      "address": "Y0",
+      "dataType": "BOOL",
+      "description": "输送线电机控制",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": true,
+      "currentValue": true,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y1",
+      "label": "加热器运行",
+      "type": "output",
+      "address": "Y1",
+      "dataType": "BOOL",
+      "description": "加热器控制输出",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": true,
+      "currentValue": true,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y2",
+      "label": "包装机运行",
+      "type": "output",
+      "address": "Y2",
+      "dataType": "BOOL",
+      "description": "包装机控制输出",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": true,
+      "currentValue": true,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y3",
+      "label": "报警指示灯",
+      "type": "output",
+      "address": "Y3",
+      "dataType": "BOOL",
+      "description": "报警指示灯输出",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y4",
+      "label": "进料阀",
+      "type": "output",
+      "address": "Y4",
+      "dataType": "BOOL",
+      "description": "进料阀门控制",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-y5",
+      "label": "出料阀",
+      "type": "output",
+      "address": "Y5",
+      "dataType": "BOOL",
+      "description": "出料阀门控制",
+      "accessLevel": "write",
+      "simulationMode": "manual",
+      "manualValue": true,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-m0",
+      "label": "系统运行状态",
+      "type": "memory",
+      "address": "M0",
+      "dataType": "BOOL",
+      "description": "系统运行标志位",
+      "accessLevel": "read-write",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 1
+      },
+      "manualValue": false,
+      "currentValue": true
+    },
+    {
+      "id": "var-m1",
+      "label": "故障标志",
+      "type": "memory",
+      "address": "M1",
+      "dataType": "BOOL",
+      "description": "系统故障标志位",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": false,
+      "currentValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-m2",
+      "label": "自动模式标志",
+      "type": "memory",
+      "address": "M2",
+      "dataType": "BOOL",
+      "description": "自动模式运行标志",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": true,
+      "currentValue": true,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      }
+    },
+    {
+      "id": "var-d100",
+      "label": "加热炉温度",
+      "type": "memory",
+      "address": "D100",
+      "dataType": "REAL",
+      "unit": "°C",
+      "minValue": 0,
+      "maxValue": 300,
+      "description": "加热炉实际温度",
+      "accessLevel": "read-write",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "sine",
+        "minValue": 180,
+        "maxValue": 220,
+        "updateInterval": 2000,
+        "step": 5
+      },
+      "manualValue": 201.34358889617985,
+      "currentValue": 188.7895337116458
+    },
+    {
+      "id": "var-d101",
+      "label": "环境温度",
+      "type": "memory",
+      "address": "D101",
+      "dataType": "REAL",
+      "unit": "°C",
+      "minValue": 0,
+      "maxValue": 50,
+      "description": "环境温度监测",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 3,
+        "minValue": 20,
+        "maxValue": 30
+      },
+      "manualValue": 24.422287195901987,
+      "currentValue": 20.53644114215004
+    },
+    {
+      "id": "var-d102",
+      "label": "目标温度设定",
+      "type": "memory",
+      "address": "D102",
+      "dataType": "REAL",
+      "unit": "°C",
+      "minValue": 0,
+      "maxValue": 300,
+      "description": "加热温度设定值",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": 300,
+      "currentValue": 0,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 300
+      }
+    },
+    {
+      "id": "var-d110",
+      "label": "原料仓液位",
+      "type": "memory",
+      "address": "D110",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "原料仓液位百分比",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "sine",
+        "minValue": 30,
+        "maxValue": 80,
+        "updateInterval": 5000,
+        "step": 2
+      },
+      "manualValue": 56.6794861202248,
+      "currentValue": 40.98691713955723
+    },
+    {
+      "id": "var-d111",
+      "label": "成品仓液位",
+      "type": "memory",
+      "address": "D111",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "成品仓液位百分比",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "sine",
+        "minValue": 20,
+        "maxValue": 90,
+        "updateInterval": 5000,
+        "step": 3
+      },
+      "manualValue": 57.35128056831473,
+      "currentValue": 35.381683995380115
+    },
+    {
+      "id": "var-d120",
+      "label": "输送速度",
+      "type": "memory",
+      "address": "D120",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "输送线速度百分比",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": 56,
+      "currentValue": 0,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      }
+    },
+    {
+      "id": "var-d121",
+      "label": "搅拌速度",
+      "type": "memory",
+      "address": "D121",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "搅拌电机速度百分比",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": 0,
+      "currentValue": 0,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      }
+    },
+    {
+      "id": "var-d130",
+      "label": "今日产量",
+      "type": "memory",
+      "address": "D130",
+      "dataType": "INT",
+      "unit": "件",
+      "minValue": 0,
+      "maxValue": 10000,
+      "description": "当日累计产量",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "step",
+        "minValue": 0,
+        "maxValue": 5000,
+        "updateInterval": 3000,
+        "step": 1
+      },
+      "manualValue": 1620,
+      "currentValue": 2168
+    },
+    {
+      "id": "var-d131",
+      "label": "良品数量",
+      "type": "memory",
+      "address": "D131",
+      "dataType": "INT",
+      "unit": "件",
+      "minValue": 0,
+      "maxValue": 10000,
+      "description": "合格产品数量",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "step",
+        "minValue": 0,
+        "maxValue": 4800,
+        "updateInterval": 3000,
+        "step": 1,
+        "fluctuationRange": 1000
+      },
+      "manualValue": 1620,
+      "currentValue": 3832
+    },
+    {
+      "id": "var-d140",
+      "label": "良品率",
+      "type": "memory",
+      "address": "D140",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "产品合格率",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 2,
+        "minValue": 95,
+        "maxValue": 99
+      },
+      "manualValue": 98.45033327791145,
+      "currentValue": 96.86249940744314
+    },
+    {
+      "id": "var-d141",
+      "label": "设备运行率",
+      "type": "memory",
+      "address": "D141",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "设备综合运行效率",
+      "accessLevel": "read",
+      "simulationMode": "auto",
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 3,
+        "minValue": 85,
+        "maxValue": 95
+      },
+      "manualValue": 91.42062077120494,
+      "currentValue": 86.50819464805625
+    },
+    {
+      "id": "var-d150",
+      "label": "进料阀开度",
+      "type": "memory",
+      "address": "D150",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "进料阀门开度百分比",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": 0,
+      "currentValue": 0,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      }
+    },
+    {
+      "id": "var-d151",
+      "label": "出料阀开度",
+      "type": "memory",
+      "address": "D151",
+      "dataType": "REAL",
+      "unit": "%",
+      "minValue": 0,
+      "maxValue": 100,
+      "description": "出料阀门开度百分比",
+      "accessLevel": "read-write",
+      "simulationMode": "manual",
+      "manualValue": 0,
+      "currentValue": 0,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      }
+    },
+    {
+      "id": "var-1778404646995",
+      "address": "M3",
+      "type": "memory",
+      "dataType": "INT",
+      "label": "累计运行时间",
+      "description": "",
+      "accessLevel": "read-write",
+      "currentValue": 1000,
+      "simulationMode": "manual",
+      "manualValue": 1000,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 10000000
+      },
+      "unit": ""
+    },
+    {
+      "id": "var-1778404684298",
+      "address": "M4",
+      "type": "memory",
+      "dataType": "INT",
+      "label": "累计故障时间",
+      "description": "",
+      "accessLevel": "read-write",
+      "currentValue": 21,
+      "simulationMode": "manual",
+      "manualValue": 21,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 10000000
+      },
+      "unit": ""
+    }
+  ],
+  "simulationSettings": {
+    "updateInterval": 1000,
+    "historyRetention": 1000,
+    "enableAlarms": true
+  },
+  "deviceInstance": {
+    "id": "mitsubishi-fx-001",
+    "manufacturer": "Mitsubishi",
+    "type": "plc",
+    "series": "FX Series",
+    "deviceModel": "Mitsubishi FX Series",
+    "instanceName": "生产线PLC控制器",
+    "status": "online",
+    "ipAddress": "192.168.1.100",
+    "port": 502,
+    "lastConnectedAt": "2026-05-10T12:00:00.000Z",
+    "createdAt": "2026-05-10T12:00:00.000Z",
+    "updatedAt": "2026-05-10T12:30:00.000Z"
+  }
+}
