@@ -1,0 +1,13 @@
+{
+  "hello-world": {
+    "id": "hello-world",
+    "instanceName": "hello-world",
+    "type": "plc",
+    "manufacturer": "PLC-Sim",
+    "series": "SIM",
+    "deviceModel": "SIM-Default",
+    "status": "offline",
+    "createdAt": "2026-07-19T09:59:05.091Z",
+    "updatedAt": "2026-07-19T09:59:05.091Z"
+  }
+}

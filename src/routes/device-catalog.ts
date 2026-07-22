@@ -14,7 +14,7 @@ const router = Router()
 router.get('/manufacturers', optionalAuth, async (req, res) => {
   try {
     const { deviceType } = req.query
-    
+
     const options: any = {}
     if (deviceType) options.deviceType = deviceType as string
 
@@ -84,7 +84,7 @@ router.get('/manufacturers/:id', optionalAuth, async (req, res) => {
 router.get('/series', optionalAuth, async (req, res) => {
   try {
     const { manufacturerId, manufacturerName, type } = req.query
-    
+    //console.log('[Device Catalog Router] Query params:', req.query)
     const options: any = {}
     if (manufacturerId) options.manufacturerId = manufacturerId as string
     if (manufacturerName) options.manufacturerName = manufacturerName as string

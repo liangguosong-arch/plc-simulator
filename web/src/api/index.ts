@@ -5,6 +5,8 @@ import type {
   ConfigResponse,
   Variable,
   DeviceInstance,
+  InstanceSummary,
+  InstanceDetail,
   ApiResponse
 } from '@/types'
 
@@ -52,18 +54,19 @@ export const authApi = {
 }
 
 /**
- * 配置管理 API
+ * 配置管理 API（已废弃，保留向后兼容）
+ * @deprecated 使用 instancesApi.getInstanceConfig / updateInstanceConfig 替代
  */
 export const configApi = {
-  // 获取配置
+  // 获取默认实例配置
   getConfig: async (): Promise<ConfigResponse> => {
-    const response = await apiClient.get('/config')
+    const response = await apiClient.get('/instances/0/config')
     return response.data
   },
 
-  // 保存配置
+  // 保存默认实例变量
   saveConfig: async (variables: Variable[]): Promise<ApiResponse> => {
-    const response = await apiClient.put('/config', { variables })
+    const response = await apiClient.put('/instances/0/variables', { variables })
     return response.data
   }
 }
@@ -73,7 +76,7 @@ export const configApi = {
  */
 export const deviceInstanceApi = {
   // 获取设备实例信息
-  getInstance: async (instanceId: string = 'sim-device-001'): Promise<ApiResponse<DeviceInstance>> => {
+  getInstance: async (instanceId: string = '0'): Promise<ApiResponse<DeviceInstance>> => {
     const response = await apiClient.get(`/devices/instances/${instanceId}`)
     return response.data
   },
@@ -86,21 +89,92 @@ export const deviceInstanceApi = {
 }
 
 /**
+ * 多实例管理 API (P5)
+ */
+export const instancesApi = {
+  // 获取所有实例
+  listInstances: async (): Promise<ApiResponse<{ instances: InstanceSummary[]; total: number }>> => {
+    const response = await apiClient.get('/instances')
+    return response.data
+  },
+
+  // 创建新实例
+  createInstance: async (config: Record<string, unknown>): Promise<ApiResponse<DeviceInstance>> => {
+    const response = await apiClient.post('/instances', config)
+    return response.data
+  },
+
+  // 获取实例详情
+  getInstance: async (instanceId: string): Promise<ApiResponse<InstanceDetail>> => {
+    const response = await apiClient.get(`/instances/${instanceId}`)
+    return response.data
+  },
+
+  // 启动实例
+  startInstance: async (instanceId: string): Promise<ApiResponse> => {
+    const response = await apiClient.post(`/instances/${instanceId}/start`)
+    return response.data
+  },
+
+  // 停止实例
+  stopInstance: async (instanceId: string): Promise<ApiResponse> => {
+    const response = await apiClient.post(`/instances/${instanceId}/stop`)
+    return response.data
+  },
+
+  // 删除实例
+  deleteInstance: async (instanceId: string): Promise<ApiResponse> => {
+    const response = await apiClient.delete(`/instances/${instanceId}`)
+    return response.data
+  },
+
+  // 生成实例ID
+  generateInstanceId: async (): Promise<ApiResponse<{ instanceId: string }>> => {
+    const response = await apiClient.post('/instances/generate-id')
+    return response.data
+  },
+
+  // 获取实例完整配置（含变量）
+  getInstanceConfig: async (instanceId: string): Promise<ApiResponse<{ config: Record<string, unknown>; variables: Variable[] }>> => {
+    const response = await apiClient.get(`/instances/${instanceId}/config`)
+    return response.data
+  },
+
+  // 更新实例配置（属性编辑）
+  updateInstanceConfig: async (instanceId: string, updates: Record<string, unknown>): Promise<ApiResponse> => {
+    const response = await apiClient.put(`/instances/${instanceId}/config`, updates)
+    return response.data
+  },
+
+  // 获取实例变量配置
+  getInstanceVariables: async (instanceId: string): Promise<ApiResponse<{ variables: Variable[] }>> => {
+    const response = await apiClient.get(`/instances/${instanceId}/variables`)
+    return response.data
+  },
+
+  // 更新实例变量配置
+  updateInstanceVariables: async (instanceId: string, variables: Variable[]): Promise<ApiResponse> => {
+    const response = await apiClient.put(`/instances/${instanceId}/variables`, { variables })
+    return response.data
+  }
+}
+
+/**
  * 变量管理 API
  */
 export const variableApi = {
   // 批量读取变量值
-  getVariableValues: async (addresses: string[]) => {
+  getVariableValues: async (addresses: string[], instanceId: string = '0') => {
     const response = await apiClient.get(
-      `/devices/instances/sim-device-001/variables/values?addresses=${encodeURIComponent(addresses.join(','))}`
+      `/devices/instances/${instanceId}/variables/values?addresses=${encodeURIComponent(addresses.join(','))}`
     )
     return response.data
   },
 
   // 写入变量值
-  writeVariableValue: async (address: string, value: any): Promise<ApiResponse> => {
+  writeVariableValue: async (address: string, value: any, instanceId: string = '0'): Promise<ApiResponse> => {
     const response = await apiClient.post(
-      `/devices/instances/sim-device-001/variables/${encodeURIComponent(address)}/write`,
+      `/devices/instances/${instanceId}/variables/${encodeURIComponent(address)}/write`,
       { value }
     )
     return response.data

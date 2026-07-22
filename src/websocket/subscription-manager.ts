@@ -1,55 +1,80 @@
 import WebSocket from 'ws'
 import { VariableManager } from '../variables/variable-manager'
+import { InstanceRegistry } from '../core/instance-registry'
 import { SubscribeRequest } from '../types/device'
+import http from 'http'
 
 interface ClientInfo {
   id: string
   ws: WebSocket
+  instanceId: string
   addresses: string[]
   samplingRate: number
   lastSent: number
 }
 
 /**
- * WebSocket订阅管理器
+ * WebSocket订阅管理器 — 支持多实例路由
+ * 
+ * P4: 通过解析连接URL中的 instanceId，将客户端路由到正确的实例引擎
+ * URL 格式: /ws/devices/instances/:instanceId/subscribe
  */
 export class SubscriptionManager {
   private clients: Map<string, ClientInfo> = new Map()
   private wss: WebSocket.Server | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
-  private variableManager: VariableManager
+  private registry: InstanceRegistry
 
-  constructor(variableManager: VariableManager) {
-    this.variableManager = variableManager
+  constructor(registry: InstanceRegistry) {
+    this.registry = registry
   }
 
   /**
    * 初始化WebSocket服务器
+   * P4: 使用 HTTP upgrade 事件手动处理，支持按 instanceId 路由
    */
-  initialize(server: any): void {
-    this.wss = new WebSocket.Server({ 
-      server,
-      path: '/ws/devices/instances/sim-device-001/subscribe'
+  initialize(server: http.Server): void {
+    this.wss = new WebSocket.Server({ noServer: true })
+
+    // 手动处理 upgrade 事件以支持动态路径
+    server.on('upgrade', (request, socket, head) => {
+      const url = request.url || ''
+      const match = url.match(/^\/ws\/devices\/instances\/([^/]+)\/subscribe/)
+
+      if (!match) {
+        socket.destroy()
+        return
+      }
+
+      const instanceId = match[1]
+
+      // 验证实例是否存在
+      if (!this.registry.has(instanceId)) {
+        socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
+        socket.destroy()
+        return
+      }
+
+      this.wss!.handleUpgrade(request, socket, head, (ws) => {
+        this.handleConnection(ws, instanceId)
+      })
     })
 
-    this.wss.on('connection', (ws: WebSocket, req: any) => {
-      this.handleConnection(ws, req)
-    })
-
-    console.log('[SubscriptionManager] WebSocket server initialized')
+    console.log('[SubscriptionManager] Multi-instance WebSocket server initialized')
   }
 
   /**
    * 处理客户端连接
    */
-  private async handleConnection(ws: WebSocket, req: any): Promise<void> {
+  private async handleConnection(ws: WebSocket, instanceId: string): Promise<void> {
     const { v4: uuidv4 } = await import('uuid')
     const clientId = uuidv4()
-    console.log(`[SubscriptionManager] Client connected: ${clientId}`)
+    console.log(`[SubscriptionManager] Client connected: ${clientId} → instance: ${instanceId}`)
 
     const clientInfo: ClientInfo = {
       id: clientId,
       ws,
+      instanceId,
       addresses: [],
       samplingRate: 1000,
       lastSent: 0
@@ -85,10 +110,22 @@ export class SubscriptionManager {
       type: 'connected',
       data: {
         clientId,
-        message: 'Connected to PLC Simulator WebSocket'
+        instanceId,
+        message: `Connected to PLC Simulator instance: ${instanceId}`
       },
       timestamp: Date.now()
     }))
+  }
+
+  /**
+   * 获取客户端所属实例的 VariableManager
+   */
+  private getVariableManager(clientId: string): VariableManager | null {
+    const client = this.clients.get(clientId)
+    if (!client) return null
+
+    const inst = this.registry.get(client.instanceId)
+    return inst?.variableManager ?? null
   }
 
   /**
@@ -123,19 +160,25 @@ export class SubscriptionManager {
     const client = this.clients.get(clientId)
     if (!client) return
 
+    const vm = this.getVariableManager(clientId)
+    if (!vm) {
+      this.sendError(client.ws, `Instance "${client.instanceId}" not available`)
+      return
+    }
+
     // Support both old format (variableIds) and new format (addresses)
     const addresses = data.addresses || data.variableIds || []
     
-    if (addresses && Array.isArray(addresses)) {
+    if (addresses && Array.isArray(addresses) && addresses.length > 0) {
       client.addresses = addresses
       client.samplingRate = data.samplingRate || 1000
 
-      // 注册订阅到VariableManager
+      // 注册订阅到对应实例的 VariableManager
       addresses.forEach(address => {
-        this.variableManager.subscribeByAddress(clientId, address)
+        vm.subscribeByAddress(clientId, address)
       })
 
-      console.log(`[SubscriptionManager] Client ${clientId} subscribed to ${addresses.length} variables`)
+      console.log(`[SubscriptionManager] Client ${clientId} on instance ${client.instanceId} subscribed to ${addresses.length} variables`)
 
       // 立即发送当前值
       this.sendCurrentValues(client)
@@ -145,17 +188,20 @@ export class SubscriptionManager {
   }
 
   /**
-   * 处理取消订阅（使用地址）
+   * 处理取消订阅
    */
   private handleUnsubscribe(clientId: string, data: { addresses?: string[], variableIds?: string[] }): void {
     const client = this.clients.get(clientId)
     if (!client) return
 
+    const vm = this.getVariableManager(clientId)
+    if (!vm) return
+
     // Support both formats
     const addresses = data.addresses || data.variableIds || client.addresses
     
     addresses.forEach(address => {
-      this.variableManager.unsubscribeByAddress(clientId, address)
+      vm.unsubscribeByAddress(clientId, address)
     })
 
     if (!data.addresses && !data.variableIds) {
@@ -168,10 +214,13 @@ export class SubscriptionManager {
   }
 
   /**
-   * 发送当前值（使用地址）
+   * 发送当前值
    */
   private sendCurrentValues(client: ClientInfo): void {
-    const values = this.variableManager.getVariableValuesByAddresses(client.addresses)
+    const vm = this.getVariableManager(client.id)
+    if (!vm) return
+
+    const values = vm.getVariableValuesByAddresses(client.addresses)
     
     values.forEach(item => {
       this.sendMessage(client.ws, {
@@ -200,7 +249,7 @@ export class SubscriptionManager {
   }
 
   /**
-   * 广播更新（使用地址）
+   * 广播更新（按实例隔离）
    */
   private broadcastUpdates(): void {
     const now = Date.now()
@@ -210,8 +259,11 @@ export class SubscriptionManager {
       if (client.ws.readyState !== WebSocket.OPEN) return
       if (client.addresses.length === 0) return
 
+      const vm = this.getVariableManager(clientId)
+      if (!vm) return
+
       // 获取变量最新值
-      const values = this.variableManager.getVariableValuesByAddresses(client.addresses)
+      const values = vm.getVariableValuesByAddresses(client.addresses)
       
       values.forEach(item => {
         this.sendMessage(client.ws, {
@@ -262,10 +314,13 @@ export class SubscriptionManager {
   cleanup(clientId: string): void {
     const client = this.clients.get(clientId)
     if (client) {
-      // 取消所有订阅
-      client.addresses.forEach(address => {
-        this.variableManager.unsubscribeByAddress(clientId, address)
-      })
+      const vm = this.getVariableManager(clientId)
+      if (vm) {
+        // 取消所有订阅
+        client.addresses.forEach(address => {
+          vm.unsubscribeByAddress(clientId, address)
+        })
+      }
       
       // 关闭WebSocket连接
       if (client.ws.readyState === WebSocket.OPEN) {
@@ -313,5 +368,16 @@ export class SubscriptionManager {
    */
   getClientCount(): number {
     return this.clients.size
+  }
+
+  /**
+   * 按实例统计客户端数
+   */
+  getClientCountByInstance(): Record<string, number> {
+    const counts: Record<string, number> = {}
+    this.clients.forEach(client => {
+      counts[client.instanceId] = (counts[client.instanceId] || 0) + 1
+    })
+    return counts
   }
 }

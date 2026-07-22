@@ -16,8 +16,10 @@ export class VariableManager {
 
   /**
    * 初始化变量
+   * @param configs 变量配置数组
+   * @param autoStart 是否自动启动更新引擎（默认true，兼容旧行为；false用于延迟启动）
    */
-  async initialize(configs: VariableConfig[]): Promise<void> {
+  async initialize(configs: VariableConfig[], autoStart: boolean = true): Promise<void> {
     console.log('[VariableManager] Initializing variables...')
     
     configs.forEach(config => {
@@ -36,7 +38,9 @@ export class VariableManager {
     console.log(`[VariableManager] Initialized ${configs.length} variables`)
     
     // 启动自动更新引擎
-    this.startAutoUpdate()
+    if (autoStart) {
+      this.startAutoUpdate()
+    }
   }
 
   /**
@@ -61,7 +65,7 @@ export class VariableManager {
   /**
    * 启动自动更新引擎
    */
-  private startAutoUpdate(): void {
+  startAutoUpdate(): void {
     if (this.autoUpdateTimer) return
 
     console.log('[VariableManager] Starting auto update engine...')

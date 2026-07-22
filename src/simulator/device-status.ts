@@ -11,9 +11,9 @@ export class DeviceStatusSimulator {
   private updateInterval: NodeJS.Timeout | null = null
   private isRunning: boolean = false
 
-  constructor(deviceId: string) {
+  constructor(instanceId: string) {
     this.status = {
-      deviceId,
+      instanceId,
       status: 'stopped',
       mode: 'manual',
       uptime: 0,
@@ -38,7 +38,7 @@ export class DeviceStatusSimulator {
     // 每秒更新状态
     this.updateInterval = setInterval(() => this.update(), 1000)
     
-    console.log(`[DeviceSimulator] Started for device: ${this.status.deviceId}`)
+    console.log(`[DeviceSimulator] Started for device: ${this.status.instanceId}`)
   }
 
   /**
@@ -56,7 +56,7 @@ export class DeviceStatusSimulator {
       this.updateInterval = null
     }
     
-    console.log(`[DeviceSimulator] Stopped for device: ${this.status.deviceId}`)
+    console.log(`[DeviceSimulator] Stopped for device: ${this.status.instanceId}`)
   }
 
   /**

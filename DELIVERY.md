@@ -177,7 +177,7 @@ PORT=9000 npm run dev
 
 ## 🔍 已知限制
 
-1. 仅支持单个设备实例模拟（sim-device-001）
+1. ✅ 支持多设备实例模拟（通过 `GET /api/v1/instances` 管理）
 2. 数据不持久化（重启后变量值重置）
 3. 报警为随机生成（非基于真实阈值）
 4. 无真实的PLC通信协议（仅HTTP/WebSocket）

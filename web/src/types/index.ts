@@ -83,6 +83,26 @@ export interface ApiResponse<T = any> {
   data: T
 }
 
+// 实例摘要（实例列表用）
+export interface InstanceSummary {
+  instanceId: string
+  name: string
+  status: string
+  deviceType: string
+  createdAt: string
+  startedAt?: string
+}
+
+// 实例详情
+export interface InstanceDetail {
+  instanceId: string
+  config: DeviceInstance
+  status: string
+  variableCount: number
+  createdAt: string
+  startedAt?: string
+}
+
 // Toast 类型
 export type ToastType = 'success' | 'error' | 'info'
 

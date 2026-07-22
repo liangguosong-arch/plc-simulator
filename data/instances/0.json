@@ -1,0 +1,26 @@
+{
+  "config": {},
+  "variables": [
+    {
+      "id": "var-1784708173236",
+      "address": "X1.1",
+      "type": "input",
+      "dataType": "BOOL",
+      "label": "电机启动",
+      "description": "",
+      "accessLevel": "read-write",
+      "currentValue": false,
+      "simulationMode": "manual",
+      "manualValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      },
+      "unit": ""
+    }
+  ]
+}

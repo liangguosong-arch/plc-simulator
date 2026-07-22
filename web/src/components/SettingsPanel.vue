@@ -31,6 +31,7 @@ const loadManufacturers = async () => {
       deviceType: 'plc',
     })
     manufacturers.value = response.data || []
+    console.log('manufacturers: ', manufacturers.value)
   } catch (error: any) {
     console.error('Failed to load manufacturers:', error)
   }
@@ -80,7 +81,7 @@ const startEdit = async () => {
     loadingCatalog.value = true
     try {
       await loadManufacturers()
-      
+      console.log('manufacturers: ', manufacturers.value)
       // If we have a manufacturer, load its series
       if (editingInstance.value.manufacturer) {
         await loadSeries(editingInstance.value.manufacturer)

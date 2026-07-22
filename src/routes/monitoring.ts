@@ -1,7 +1,5 @@
 import { Router } from 'express'
-import { DeviceStatusSimulator } from '../simulator/device-status'
-import { VariableManager } from '../variables/variable-manager'
-import { AlarmGenerator } from '../simulator/alarm-generator'
+import { InstanceRegistry } from '../core/instance-registry'
 import { optionalAuth } from '../auth/middleware'
 import { validateInstanceId } from '../middleware/errorHandler'
 import { ApiResponse } from '../types/api'
@@ -10,23 +8,32 @@ import { ConfigManager } from '../config/config-manager'
 const router = Router()
 
 // 依赖注入
-let deviceStatus: DeviceStatusSimulator
-let variableManager: VariableManager
-let alarmGenerator: AlarmGenerator
+let registry: InstanceRegistry
 let configManager: ConfigManager
 
 export function initializeMonitoring(
-  statusSimulator: DeviceStatusSimulator,
-  varManager: VariableManager,
-  alarms: AlarmGenerator,
+  reg: InstanceRegistry,
   cfgManager?: ConfigManager
 ) {
-  deviceStatus = statusSimulator
-  variableManager = varManager
-  alarmGenerator = alarms
+  registry = reg
   if (cfgManager) {
     configManager = cfgManager
   }
+}
+
+// 辅助：从 registry 获取实例，不存在则返回 404
+function resolveInstance(instanceId: string, res: any) {
+  const inst = registry.get(instanceId)
+  if (!inst) {
+    res.status(404).json({
+      code: 40401,
+      data: null,
+      message: `实例 "${instanceId}" 不存在`,
+      timestamp: Date.now()
+    } as ApiResponse)
+    return null
+  }
+  return inst
 }
 
 // 使用optionalAuth允许公开访问（本地开发环境）
@@ -34,35 +41,46 @@ router.use(optionalAuth)
 
 /**
  * GET /api/v1/devices/instances/:instanceId
- * 获取设备实例信息
+ * 获取设备实例信息（从注册表返回运行态摘要）
  */
 router.get('/devices/instances/:instanceId', validateInstanceId, async (req, res) => {
   try {
-    if (!configManager) {
-      return res.status(500).json({
-        code: 50000,
-        data: null,
-        message: '配置管理器未初始化',
+    const { instanceId } = req.params
+
+    // 优先从注册表获取
+    const inst = registry.get(instanceId)
+    if (inst) {
+      return res.json({
+        code: 200,
+        data: {
+          instanceId: inst.instanceId,
+          ...inst.config,
+          status: inst.status,
+          createdAt: inst.createdAt,
+          startedAt: inst.startedAt
+        },
+        message: 'success',
         timestamp: Date.now()
       } as ApiResponse)
     }
 
-    const config = await configManager.getConfig()
-    const deviceInstance = config.deviceInstance
-
-    if (!deviceInstance) {
-      return res.status(404).json({
-        code: 40401,
-        data: null,
-        message: '设备实例不存在',
-        timestamp: Date.now()
-      } as ApiResponse)
+    // 回退到配置文件
+    if (configManager) {
+      const config = await configManager.getConfig()
+      if (config.deviceInstance && config.deviceInstance.id === instanceId) {
+        return res.json({
+          code: 200,
+          data: config.deviceInstance,
+          message: 'success',
+          timestamp: Date.now()
+        } as ApiResponse)
+      }
     }
 
-    res.json({
-      code: 200,
-      data: deviceInstance,
-      message: 'success',
+    res.status(404).json({
+      code: 40401,
+      data: null,
+      message: `实例 "${instanceId}" 不存在`,
       timestamp: Date.now()
     } as ApiResponse)
   } catch (error: any) {
@@ -91,8 +109,6 @@ router.put('/devices/instances/:instanceId', validateInstanceId, async (req, res
     }
 
     const updates = req.body
-    
-    // 获取当前配置
     const config = await configManager.getConfig()
     const currentInstance = config.deviceInstance
 
@@ -105,18 +121,14 @@ router.put('/devices/instances/:instanceId', validateInstanceId, async (req, res
       } as ApiResponse)
     }
 
-    // 合并更新
     const updatedInstance = {
       ...currentInstance,
       ...updates,
-      id: currentInstance.id, // 不允许修改ID
+      id: currentInstance.id,
       updatedAt: new Date().toISOString()
     }
 
-    // 保存配置
-    await configManager.saveConfig({
-      deviceInstance: updatedInstance
-    })
+    await configManager.saveConfig({ deviceInstance: updatedInstance })
 
     res.json({
       code: 200,
@@ -135,12 +147,14 @@ router.put('/devices/instances/:instanceId', validateInstanceId, async (req, res
 })
 
 /**
- * GET /api/v1/devices/instances/:id/status
+ * GET /api/v1/devices/instances/:instanceId/status
  * 获取设备状态
  */
 router.get('/devices/instances/:instanceId/status', validateInstanceId, (req, res) => {
-  const status = deviceStatus.getStatus()
-  
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
+
+  const status = inst.deviceStatus.getStatus()
   res.json({
     code: 200,
     data: status,
@@ -154,8 +168,10 @@ router.get('/devices/instances/:instanceId/status', validateInstanceId, (req, re
  * 获取变量列表
  */
 router.get('/devices/instances/:instanceId/variables', validateInstanceId, (req, res) => {
-  const variables = variableManager.getVariableList()
-  
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
+
+  const variables = inst.variableManager.getVariableList()
   res.json({
     code: 200,
     data: variables,
@@ -166,11 +182,13 @@ router.get('/devices/instances/:instanceId/variables', validateInstanceId, (req,
 
 /**
  * GET /api/v1/devices/instances/:instanceId/variables/values
- * 批量获取变量值（使用地址作为key）
+ * 批量获取变量值
  */
 router.get('/devices/instances/:instanceId/variables/values', validateInstanceId, (req, res) => {
-  const { addresses } = req.query
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
 
+  const { addresses } = req.query
   if (!addresses || typeof addresses !== 'string') {
     return res.status(400).json({
       code: 40001,
@@ -180,11 +198,9 @@ router.get('/devices/instances/:instanceId/variables/values', validateInstanceId
     } as ApiResponse)
   }
 
-  const addressList = addresses.split(',')
-  
   try {
-    const values = variableManager.getVariableValuesByAddresses(addressList)
-    
+    const addressList = addresses.split(',')
+    const values = inst.variableManager.getVariableValuesByAddresses(addressList)
     res.json({
       code: 200,
       data: values,
@@ -203,11 +219,13 @@ router.get('/devices/instances/:instanceId/variables/values', validateInstanceId
 
 /**
  * GET /api/v1/devices/instances/:instanceId/variables/history
- * 获取历史数据（使用地址作为key）
+ * 获取历史数据
  */
 router.get('/devices/instances/:instanceId/variables/history', validateInstanceId, (req, res) => {
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
+
   const { addresses, startTime, endTime, interval } = req.query
-  
   if (!addresses || !startTime || !endTime) {
     return res.status(400).json({
       code: 40001,
@@ -224,8 +242,8 @@ router.get('/devices/instances/:instanceId/variables/history', validateInstanceI
 
   try {
     const history = addressList.map(address => ({
-      address: address,
-      data: variableManager.getHistoryByAddress(address, start, end, intervalNum)
+      address,
+      data: inst.variableManager.getHistoryByAddress(address, start, end, intervalNum)
     }))
 
     res.json({
@@ -255,14 +273,12 @@ router.get('/devices/instances/:instanceId/variables/history', validateInstanceI
  * 获取报警信息
  */
 router.get('/devices/instances/:instanceId/alarms', validateInstanceId, (req, res) => {
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
+
   const { status, severity } = req.query
-
   try {
-    const alarms = alarmGenerator.getAlarms(
-      status as any,
-      severity as any
-    )
-
+    const alarms = inst.alarmGenerator.getAlarms(status as any, severity as any)
     res.json({
       code: 200,
       data: alarms,
@@ -284,11 +300,12 @@ router.get('/devices/instances/:instanceId/alarms', validateInstanceId, (req, re
  * 确认报警
  */
 router.post('/devices/instances/:instanceId/alarms/:alarmId/acknowledge', validateInstanceId, (req, res) => {
+  const inst = resolveInstance(req.params.instanceId, res)
+  if (!inst) return
+
   const alarmId = req.params.alarmId
-  
   try {
-    const success = alarmGenerator.acknowledgeAlarm(alarmId, req.user?.userId)
-    
+    const success = inst.alarmGenerator.acknowledgeAlarm(alarmId, req.user?.userId)
     if (!success) {
       return res.status(400).json({
         code: 40000,
@@ -297,7 +314,6 @@ router.post('/devices/instances/:instanceId/alarms/:alarmId/acknowledge', valida
         timestamp: Date.now()
       } as ApiResponse)
     }
-
     res.json({
       code: 200,
       data: { success: true },

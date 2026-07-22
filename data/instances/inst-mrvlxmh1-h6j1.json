@@ -1,0 +1,36 @@
+{
+  "config": {
+    "id": "inst-mrvlxmh1-h6j1",
+    "instanceName": "西门子设备",
+    "type": "plc",
+    "manufacturer": "Siemens",
+    "series": "S7-1200",
+    "deviceModel": "Siemens S7-1200",
+    "status": "offline",
+    "createdAt": "2026-07-22T04:54:06.778Z",
+    "updatedAt": "2026-07-22T04:54:06.778Z"
+  },
+  "variables": [
+    {
+      "id": "var-1784708233307",
+      "address": "X1.2",
+      "type": "input",
+      "dataType": "BOOL",
+      "label": "电机启动",
+      "description": "",
+      "accessLevel": "read-write",
+      "currentValue": false,
+      "simulationMode": "manual",
+      "manualValue": false,
+      "simulationConfig": {
+        "strategy": "random",
+        "fluctuationRange": 10,
+        "step": 1,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 100
+      },
+      "unit": ""
+    }
+  ]
+}

@@ -1,4 +1,15 @@
 {
+  "config": {
+    "id": "mitsubishi-fx-001",
+    "instanceName": "生产线PLC控制器",
+    "type": "plc",
+    "manufacturer": "Mitsubishi",
+    "series": "FX",
+    "deviceModel": "Mitsubishi FX Series",
+    "status": "online",
+    "createdAt": "2026-05-10T12:00:00.000Z",
+    "updatedAt": "2026-07-22T04:53:30.192Z"
+  },
   "variables": [
     {
       "id": "var-x0",
@@ -624,24 +635,5 @@
       },
       "unit": ""
     }
-  ],
-  "simulationSettings": {
-    "updateInterval": 1000,
-    "historyRetention": 1000,
-    "enableAlarms": true
-  },
-  "deviceInstance": {
-    "id": "mitsubishi-fx-001",
-    "manufacturer": "Mitsubishi",
-    "type": "plc",
-    "series": "FX Series",
-    "deviceModel": "Mitsubishi FX Series",
-    "instanceName": "生产线PLC控制器",
-    "status": "online",
-    "ipAddress": "192.168.1.100",
-    "port": 502,
-    "lastConnectedAt": "2026-05-10T12:00:00.000Z",
-    "createdAt": "2026-05-10T12:00:00.000Z",
-    "updatedAt": "2026-05-10T12:30:00.000Z"
-  }
+  ]
 }

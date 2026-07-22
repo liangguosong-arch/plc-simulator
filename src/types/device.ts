@@ -98,7 +98,7 @@ export interface DeviceInstance {
  * 设备状态
  */
 export interface DeviceStatus {
-  deviceId: string
+  instanceId: string
   status: DeviceStatusType
   mode: OperationMode
   errorCode?: string
@@ -116,7 +116,7 @@ export interface DeviceStatus {
  */
 export interface Alarm {
   id: string
-  deviceId: string
+  instanceId: string
   alarmCode: string
   message: string
   severity: AlarmSeverity
@@ -246,7 +246,7 @@ export interface RestartRequest {
 }
 
 /**
- * PLC品牌信息
+ * PLC && HMI 品牌信息
  */
 export interface Manufacturer {
   _id?: string

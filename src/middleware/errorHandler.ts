@@ -41,16 +41,19 @@ export function errorHandler(
 
 /**
  * 设备实例ID校验中间件
- * 验证instanceId是否为有效值（sim-device-001或0）
+ * P6: 支持任意合法实例ID（格式校验，实际存在性由路由层通过Registry验证）
+ * 合法格式: 字母数字、连字符、下划线，长度 1-64
  */
 export function validateInstanceId(req: Request, res: Response, next: NextFunction): void {
   const instanceId = req.params.instanceId
   
-  if (instanceId !== 'sim-device-001' && instanceId !== '0') {
-    res.status(404).json({
-      code: 40401,
+  // 向后兼容: 接受 '0' 和 'sim-device-001'
+  // 同时接受任意字母数字组合
+  if (!instanceId || instanceId.length > 64 || !/^[a-zA-Z0-9\-_]+$/.test(instanceId)) {
+    res.status(400).json({
+      code: 40002,
       data: null,
-      message: '设备不存在',
+      message: '无效的实例ID格式',
       timestamp: Date.now()
     } as ApiResponse)
     return

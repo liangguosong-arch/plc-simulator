@@ -1,0 +1,12 @@
+{
+  "mitsubishi-fx-001": {
+    "name": "生产线PLC控制器",
+    "deviceType": "plc",
+    "createdAt": "2026-05-10T12:00:00.000Z"
+  },
+  "inst-mrvlxmh1-h6j1": {
+    "name": "西门子设备",
+    "deviceType": "plc",
+    "createdAt": "2026-07-22T04:54:06.778Z"
+  }
+}

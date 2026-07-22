@@ -5,10 +5,10 @@ import { Alarm, AlarmSeverity, AlarmStatus } from '../types/device'
  */
 export class AlarmGenerator {
   private alarms: Alarm[] = []
-  private deviceId: string
+  private instanceId: string
 
-  constructor(deviceId: string) {
-    this.deviceId = deviceId
+  constructor(instanceId: string) {
+    this.instanceId = instanceId
   }
 
   /**
@@ -45,7 +45,7 @@ export class AlarmGenerator {
     const { v4: uuidv4 } = await import('uuid')
     const alarm: Alarm = {
       id: uuidv4(),
-      deviceId: this.deviceId,
+      instanceId: this.instanceId,
       alarmCode: template.code,
       message: template.message,
       severity,
