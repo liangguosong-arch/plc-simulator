@@ -194,4 +194,3 @@ MIT
 - Web管理界面
 - 变量自动/手动模拟
 - WebSocket实时推送
-"# plc-simulator" 
