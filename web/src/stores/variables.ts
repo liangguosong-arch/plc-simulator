@@ -75,8 +75,9 @@ export const useVariableStore = defineStore('variables', () => {
 
   function formatValue(variable: Variable): string {
     const val = variable.currentValue
+    //console.log('Formatting value:', val, 'for variable:', variable)
     if (val === undefined || val === null) return '-'
-    if (variable.dataType === 'BOOL') return val ? 'TRUE' : 'FALSE'
+    if (variable.dataType === 'BOOL') return Boolean(val) ? 'TRUE' : 'FALSE'
     if (variable.dataType === 'REAL') return Number(val).toFixed(2)
     return String(val)
   }
@@ -84,6 +85,18 @@ export const useVariableStore = defineStore('variables', () => {
   // 切换 Auto/Manual 模式
   function toggleMode(variable: Variable) {
     variable.simulationMode = variable.simulationMode === 'auto' ? 'manual' : 'auto'
+    if (variable.simulationMode === 'auto') {
+      if(!variable.simulationConfig) {
+        variable.simulationConfig = {
+          strategy: 'fixed',
+          fluctuationRange: 0,
+          step: 0,
+          updateInterval: 1000,
+          minValue: 0,
+          maxValue: 100
+        }
+      }
+    }
   }
 
   // 添加变量
@@ -155,6 +168,8 @@ export const useVariableStore = defineStore('variables', () => {
 
   // 启动实时轮询
   function startRealtimeUpdate() {
+    if (updateTimer !== null) return
+    console.log('[VariableStore] Starting real-time update...')
     updateTimer = window.setInterval(async () => {
       try {
         const addresses = variables.value.map((v: Variable) => v.address)
@@ -166,7 +181,7 @@ export const useVariableStore = defineStore('variables', () => {
         if (result.code === 200 && result.data) {
           const values = result.data
           variables.value.forEach(v => {
-            const newVal = values[v.address]
+            const newVal = values.find((val: any) => val.address === v.address)
             if (newVal !== undefined) {
               v.currentValue = newVal.value ?? newVal
               ;(v as any).quality = newVal.quality ?? 'good'
@@ -184,6 +199,7 @@ export const useVariableStore = defineStore('variables', () => {
 
   // 停止轮询
   function stopRealtimeUpdate() {
+    console.log('[VariableStore] Stopping real-time update...')
     if (updateTimer !== null) {
       clearInterval(updateTimer)
       updateTimer = null

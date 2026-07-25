@@ -274,7 +274,7 @@ const handleSaveConfig = async () => {
 
 const handleToggleMode = (variable: Variable) => {
   variableStore.toggleMode(variable)
-  const newMode = variable.simulationMode === 'auto' ? 'manual' : 'auto'
+  const newMode = variable.simulationMode // === 'auto' ? 'manual' : 'auto'
   uiStore.showToast(`Switched to ${newMode} mode`)
 }
 

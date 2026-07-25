@@ -54,7 +54,6 @@ async function loadManufacturers() {
   try {
     const result = await deviceCatalogApi.getManufacturers({ deviceType: 'plc' })
     manufacturerList.value = (result.data || []) as Manufacturer[]
-    console.log('manufacturerList: ', manufacturerList.value)
   } catch {
     manufacturerList.value = []
   } finally {
@@ -305,8 +304,7 @@ async function handleDelete(inst: InstanceSummary) {
 }
 
 function goToInstance(instanceId: string) {
-  instanceStore.switchInstance(instanceId)
-  router.push('/')
+  router.push({ path: '/', query: { instanceId } })
 }
 
 onMounted(async () => {

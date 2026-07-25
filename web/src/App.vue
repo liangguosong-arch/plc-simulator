@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, computed, ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useInstanceStore } from '@/stores/instances'
@@ -14,12 +14,33 @@ const instanceStore = useInstanceStore()
 const variableStore = useVariableStore()
 const uiStore = useUiStore()
 const router = useRouter()
+const route = useRoute()
 
 // Store refs
 const { currentUser } = storeToRefs(userStore)
 const { currentInstanceId, instances } = storeToRefs(instanceStore)
 const { connectionStatus } = storeToRefs(variableStore)
 const { toastMessage, toastType, showLoginModal } = storeToRefs(uiStore)
+
+// 初始化就绪标记
+const ready = ref(false)
+
+// 是否从 URL 指定了 instanceId
+const hasUrlInstanceId = computed(() => !!route.query.instanceId)
+
+// 是否为管理员
+const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
+
+// 是否显示实例选择器：管理员 + URL 未指定 instanceId
+const showInstanceSelector = computed(() => isAdmin.value)
+
+// 是否显示实例管理按钮：管理员 + URL 未指定 instanceId
+const showManagementBtn = computed(() => isAdmin.value)
+
+// 是否没有可用实例：非管理员 + URL 未指定 instanceId + 实例 '0' 不存在
+const noAvailableInstance = computed(() =>
+  !isAdmin.value && !hasUrlInstanceId.value && !instances.value.some(i => i.instanceId === '0')
+)
 
 // 导航到实例管理
 function goToInstanceManager() {
@@ -46,14 +67,71 @@ function handleCloseLogin() {
   uiStore.closeLoginModal()
 }
 
+// 加载实例数据并启动实时更新
+async function initInstanceData() {
+  variableStore.stopRealtimeUpdate()
+  await variableStore.loadConfig()
+  await variableStore.loadDeviceInstance()
+  variableStore.startRealtimeUpdate()
+}
+
 // Lifecycle
 onMounted(async () => {
+  // 1. 恢复用户登录态
   userStore.restoreFromStorage()
   if (!userStore.isLoggedIn) {
     await userStore.autoLoginAsGuest()
   }
+
+  // 2. 加载实例列表
   await instanceStore.loadInstances()
+
+  // 3. 根据 URL 参数和角色决定目标实例
+  const urlInstanceId = route.query.instanceId as string | undefined
+
+  if (urlInstanceId) {
+    // URL 指定了 instanceId：直接打开该实例
+    await instanceStore.switchInstance(urlInstanceId)
+    await initInstanceData()
+  } else if (isAdmin.value) {
+    // 管理员 + 无 URL 参数：使用默认实例 '0'
+    await instanceStore.switchInstance('0')
+    await initInstanceData()
+  } else {
+    // 非管理员：检查实例 '0' 是否存在
+    if (instances.value.some(i => i.instanceId === '0')) {
+      await instanceStore.switchInstance('0')
+      await initInstanceData()
+    }
+    // 否则 noAvailableInstance 为 true，不加载任何实例
+  }
+
+  ready.value = true
 })
+
+// 监听 URL instanceId 参数变化（用于运行时 URL 变更，如点击 logo 回到首页）
+watch(
+  () => route.query.instanceId,
+  async (newId) => {
+    if (!ready.value) return
+
+    const id = newId as string | undefined
+    if (id) {
+      // URL 新增了 instanceId，切换到指定实例
+      await instanceStore.switchInstance(id)
+      await initInstanceData()
+    } else if (!hasUrlInstanceId.value) {
+      // URL 移除了 instanceId，根据角色重新决定目标实例
+      if (isAdmin.value) {
+        await instanceStore.switchInstance('0')
+        await initInstanceData()
+      } else if (instances.value.some(i => i.instanceId === '0')) {
+        await instanceStore.switchInstance('0')
+        await initInstanceData()
+      }
+    }
+  }
+)
 </script>
 
 <template>
@@ -68,26 +146,54 @@ onMounted(async () => {
       </div>
 
       <div class="header-center">
-        <!-- 实例选择器 -->
-        <select class="instance-select" :value="currentInstanceId" @change="handleInstanceChange">
+        <!-- 实例选择器：仅管理员且 URL 未指定 instanceId 时显示 -->
+        <select
+          v-if="showInstanceSelector"
+          class="instance-select"
+          :value="currentInstanceId"
+          @change="handleInstanceChange"
+        >
           <option v-for="inst in instances" :key="inst.instanceId" :value="inst.instanceId">
             {{ inst.instanceId === '0' ? '🏠 默认' : inst.name || inst.instanceId }}
             {{ inst.status === 'running' ? '🟢' : '🔴' }}
           </option>
         </select>
-        <button class="nav-btn" @click="goToInstanceManager" title="实例管理">⚙️ 实例管理</button>
+        <!-- 实例管理按钮：仅管理员且 URL 未指定 instanceId 时显示 -->
+        <button
+          v-if="showManagementBtn"
+          class="nav-btn"
+          @click="goToInstanceManager"
+          title="实例管理"
+        >
+          ⚙️ 实例管理
+        </button>
       </div>
 
       <div class="header-right">
         <span v-if="currentUser" class="user-info">
-          {{ currentUser.role === 'admin' ? '👑' : '👤' }} {{ currentUser.name }}
+          {{ currentUser.role === 'ADMIN' ? '👑' : '👤' }} {{ currentUser.name }}
         </span>
         <button class="login-btn" @click="handleSwitchUser">切换用户</button>
       </div>
     </div>
 
+    <!-- 加载状态 -->
+    <div v-if="!ready" class="loading-state">
+      <div class="spinner"></div>
+      <span>初始化中...</span>
+    </div>
+
+    <!-- 无可用实例提示 -->
+    <div v-else-if="noAvailableInstance" class="no-instance-message">
+      <div class="no-instance-card">
+        <span class="no-instance-icon">📭</span>
+        <p>没有可用的模拟器实例</p>
+        <span class="no-instance-hint">请联系管理员创建或分配实例</span>
+      </div>
+    </div>
+
     <!-- 页面内容 -->
-    <router-view />
+    <router-view v-if="ready && !noAvailableInstance" />
 
     <!-- 登录弹窗 -->
     <LoginModal v-if="showLoginModal" @close="handleCloseLogin" />
@@ -168,6 +274,64 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   font-size: 12px;
 }
 .login-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* Loading State */
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* No Instance Message */
+.no-instance-message {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-instance-card {
+  text-align: center;
+  background: white;
+  padding: 48px 64px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.no-instance-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.no-instance-card p {
+  font-size: 18px;
+  color: #1e293b;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.no-instance-hint {
+  font-size: 13px;
+  color: #94a3b8;
+}
 
 /* Toast */
 .toast {

@@ -1,0 +1,53 @@
+{
+  "config": {
+    "id": "2574b261-ebf8-4de3-a8cb-815dfe1f0c48",
+    "instanceName": "施耐德PLC#1",
+    "type": "plc",
+    "manufacturer": "施耐德",
+    "series": "Modicon M200",
+    "deviceModel": "Schneider M241",
+    "status": "offline",
+    "createdAt": "2026-07-23T03:53:58.841Z",
+    "updatedAt": "2026-07-23T03:53:58.841Z"
+  },
+  "variables": [
+    {
+      "id": "7af7eb9d-6abc-42d0-8598-4e6b25094352",
+      "address": "%I0.0",
+      "label": "电机启动",
+      "type": "input",
+      "dataType": "BOOL",
+      "accessLevel": "read_only",
+      "simulationMode": "auto",
+      "unit": "",
+      "description": "离散量输入 0.0",
+      "defaultValue": null,
+      "simulationConfig": {
+        "strategy": "fixed",
+        "fluctuationRange": 1,
+        "step": 0,
+        "updateInterval": 1000,
+        "minValue": 0,
+        "maxValue": 1
+      },
+      "currentValue": true,
+      "quality": "good",
+      "lastUpdate": "2026-07-25T03:02:45.940Z"
+    },
+    {
+      "id": "bdc8b49b-94d2-43b6-b0c0-00c231508512",
+      "address": "%I0.2",
+      "label": "辅助加热",
+      "type": "input",
+      "dataType": "BOOL",
+      "accessLevel": "read_only",
+      "simulationMode": "static",
+      "unit": "",
+      "description": "离散量输入 0.2",
+      "defaultValue": null,
+      "currentValue": false,
+      "quality": "good",
+      "lastUpdate": "2026-07-25T02:02:28.920Z"
+    }
+  ]
+}
