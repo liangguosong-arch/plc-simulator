@@ -113,7 +113,8 @@ router.get('/instances/:instanceId', optionalAuth, validateInstanceId, async (re
         status: inst?.status || 'offline',
         variableCount: Array.isArray(fullConfig?.variables) ? fullConfig.variables.length : 0,
         createdAt: (fullConfig?.config as any)?.createdAt || '',
-        startedAt: inst?.startedAt || undefined
+        startedAt: inst?.startedAt || undefined,
+        viewUrl: '',
       },
       timestamp: Date.now()
     })
