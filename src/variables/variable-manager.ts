@@ -145,6 +145,7 @@ export class VariableManager {
     }
 
     // 如果是自动模式，实时计算
+    /*
     if (data.config.simulationMode === 'auto') {
       const newValue = ValueSimulator.calculateNewValue(data.config, data.currentValue)
       if (newValue !== data.currentValue) {
@@ -153,7 +154,7 @@ export class VariableManager {
         this.addHistory(variableId, newValue, new Date())
       }
     }
-
+    */
     return data.currentValue
   }
 

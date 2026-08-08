@@ -263,6 +263,7 @@ const { loading, variableGroups } = storeToRefs(variableStore)
 const isNumericType = variableStore.isNumericType
 const formatValue = variableStore.formatValue
 
+
 // Methods
 const handleSaveConfig = async () => {
   try {
@@ -417,13 +418,10 @@ const handleDeleteVariable = () => {
 }
 
 // Lifecycle
-onMounted(async () => {
-  try {
-    await variableStore.loadConfig()
-    variableStore.startRealtimeUpdate()
-  } catch (error) {
-    uiStore.showToast('Failed to load configuration', 'error')
-  }
+onMounted(() => {
+  // App.vue/HomePage 已通过 switchInstance 统一加载实例数据，
+  // 此处仅确保实时轮询处于运行状态
+  variableStore.startRealtimeUpdate()
 })
 
 onBeforeUnmount(() => {

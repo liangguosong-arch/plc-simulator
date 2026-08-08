@@ -1,13 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { variableApi, deviceInstanceApi, instancesApi } from '@/api'
+import { variableApi, deviceInstanceApi } from '@/api'
 import { useInstanceStore } from './instances'
 import type { Variable, VariableGroup, DeviceInstance } from '@/types'
 
 export const useVariableStore = defineStore('variables', () => {
-  // State
-  const variables = ref<Variable[]>([])
-  const deviceInstance = ref<DeviceInstance | null>(null)
+  const instanceStore = useInstanceStore()
+
+  // variables 和 deviceInstance 从 instanceStore 派生（单一真相源）
+  const variables = computed<Variable[]>(() => instanceStore.currentVariables)
+  const deviceInstance = computed<DeviceInstance | null>(() => instanceStore.currentDeviceInstance)
+
   const loading = ref(false)
   const connectionStatus = ref('Connecting...')
   const lastUpdate = ref('-')
@@ -75,7 +78,6 @@ export const useVariableStore = defineStore('variables', () => {
 
   function formatValue(variable: Variable): string {
     const val = variable.currentValue
-    //console.log('Formatting value:', val, 'for variable:', variable)
     if (val === undefined || val === null) return '-'
     if (variable.dataType === 'BOOL') return Boolean(val) ? 'TRUE' : 'FALSE'
     if (variable.dataType === 'REAL') return Number(val).toFixed(2)
@@ -99,43 +101,14 @@ export const useVariableStore = defineStore('variables', () => {
     }
   }
 
-  // 添加变量
+  // 添加变量（直写 instanceStore 真相源）
   function addVariable(variable: Variable) {
-    variables.value.push(variable)
+    instanceStore.currentVariables.push(variable)
   }
 
-  // 删除变量
+  // 删除变量（直写 instanceStore 真相源）
   function deleteVariable(id: string) {
-    variables.value = variables.value.filter(v => v.id !== id)
-  }
-
-  // 从实例配置加载变量
-  async function loadConfig() {
-    try {
-      loading.value = true
-      const instanceId = getCurrentInstanceId()
-      const result = await instancesApi.getInstanceConfig(instanceId)
-      if (result.code === 200 && result.data) {
-        variables.value = result.data.variables || []
-      }
-    } catch (error: any) {
-      console.error('Failed to load instance config:', error)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // 加载设备实例
-  async function loadDeviceInstance() {
-    try {
-      const instanceId = getCurrentInstanceId()
-      const result = await deviceInstanceApi.getInstance(instanceId)
-      if (result.code === 200 && result.data) {
-        deviceInstance.value = result.data
-      }
-    } catch (error: any) {
-      console.error('Failed to load device instance:', error)
-    }
+    instanceStore.currentVariables = instanceStore.currentVariables.filter(v => v.id !== id)
   }
 
   // 更新手动写入值
@@ -150,16 +123,16 @@ export const useVariableStore = defineStore('variables', () => {
     }
   }
 
-  // 保存变量配置（VariablesPanel 依赖）
+  // 保存变量配置（VariablesPanel 依赖，委托给 instanceStore）
   async function saveConfig() {
     await saveVariables()
   }
 
-  // 保存变量配置到服务器
+  // 保存变量配置到服务器（通过 instanceStore 确保真相源一致）
   async function saveVariables() {
     try {
       const instanceId = getCurrentInstanceId()
-      await instancesApi.updateInstanceVariables(instanceId, variables.value)
+      await instanceStore.saveVariables(instanceId, instanceStore.currentVariables)
     } catch (error: any) {
       console.error('Failed to save variables:', error)
       throw error
@@ -206,12 +179,19 @@ export const useVariableStore = defineStore('variables', () => {
     }
   }
 
-  // 更新设备实例（SettingsPanel 依赖）
+  // 更新设备实例（SettingsPanel 依赖，回写 instanceStore 真相源）
   async function updateDeviceInstance(updates: Partial<DeviceInstance>) {
     try {
       const instanceId = getCurrentInstanceId()
-      await deviceInstanceApi.updateInstance(instanceId, updates)
-      await loadDeviceInstance()
+      const result = await deviceInstanceApi.updateInstance(instanceId, updates)
+      if (result.code === 200 && result.data) {
+        instanceStore.currentDeviceInstance = result.data
+      } else {
+        // fallback: 手动合并 updates 到现有设备实例
+        if (instanceStore.currentDeviceInstance) {
+          Object.assign(instanceStore.currentDeviceInstance, updates)
+        }
+      }
     } catch (error: any) {
       console.error('Failed to update device instance:', error)
       throw error
@@ -232,8 +212,6 @@ export const useVariableStore = defineStore('variables', () => {
     toggleMode,
     addVariable,
     deleteVariable,
-    loadConfig,
-    loadDeviceInstance,
     updateManualValue,
     saveConfig,
     saveVariables,

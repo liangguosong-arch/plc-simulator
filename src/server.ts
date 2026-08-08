@@ -9,6 +9,7 @@ import { SubscriptionManager } from './websocket/subscription-manager'
 import { ConfigManager } from './config/config-manager'
 import { DatabaseManager } from './database/database-manager'
 import { getInstanceRegistry, InstanceRegistry } from './core/instance-registry'
+import { instanceStore } from './services/instance-store'
 
 // 路由
 import authRouter from './routes/auth'
@@ -70,7 +71,7 @@ export class PLCSimulatorServer {
 
     // 请求日志
     this.app.use((req, res, next) => {
-      //console.log(`[Request] ${req.method} ${req.path}`)
+      console.log(`[Request] ${req.method} ${req.path}`)
       next()
     })
 
@@ -154,30 +155,30 @@ export class PLCSimulatorServer {
       const config = await this.configManager.getConfig()
       const instanceId = config.deviceInstance?.id || '0'
 
-      // 初始化数据库管理器
+      // 初始化数据库管理器（必须在实例恢复之前，因为实例数据存储在 NeDB 中）
       console.log('[Server] Initializing database manager...')
       await this.databaseManager.initialize()
 
-      // 恢复持久化的默认实例（若存在则加载，否则用config.json的旧配置创建）
-      console.log(`[Server] Loading default instance: ${instanceId}...`)
-      const persistedInstances = await this.configManager.listPersistedInstanceIds()
+      // 恢复持久化的实例（从 NeDB 加载，使用批量查询避免 N+1）
+      console.log(`[Server] Loading persisted instances...`)
+      const allFullConfigs = await instanceStore.getAllFullConfigs()
       
-      if (persistedInstances.includes(instanceId)) {
-        // 从持久化文件恢复实例
-        const fullConfig = await this.configManager.getInstanceFullConfig(instanceId)
-        if (fullConfig) {
-          await this.registry.create(
-            fullConfig.config as unknown as any,
-            (fullConfig.variables || []) as VariableConfig[]
-          )
-        }
+      // 查找默认实例
+      const defaultFullConfig = allFullConfigs.find(d => d.config?.id === instanceId)
+      
+      if (defaultFullConfig) {
+        // 从 NeDB 恢复默认实例
+        await this.registry.create(
+          defaultFullConfig.config as unknown as any,
+          (defaultFullConfig.variables || []) as VariableConfig[]
+        )
       } else {
-        // 首次启动：用config.json创建默认实例并持久化
+        // 首次启动：用 config.json 创建默认实例并持久化到 NeDB
         await this.registry.create(
           config.deviceInstance!,
           config.variables || []
         )
-        await this.configManager.saveInstanceFullConfig(
+        await instanceStore.saveFullConfig(
           instanceId,
           config.deviceInstance as unknown as Record<string, unknown>,
           config.variables || []
@@ -185,21 +186,18 @@ export class PLCSimulatorServer {
       }
 
       // 恢复其他持久化的实例（只创建，不自动启动）
-      for (const persistedId of persistedInstances) {
-        if (persistedId === instanceId) continue // 默认实例已处理
-        if (this.registry.has(persistedId)) continue
-        const fullConfig = await this.configManager.getInstanceFullConfig(persistedId)
-        if (fullConfig) {
-          await this.registry.create(
-            fullConfig.config as unknown as any,
-            (fullConfig.variables || []) as VariableConfig[]
-          )
-          // 如果之前是running状态，自动重启
-          if ((fullConfig.config as any)?.status === 'online') {
-            try {
-              this.registry.start(persistedId)
-            } catch { /* 静默处理 */ }
-          }
+      for (const fullConfig of allFullConfigs) {
+        if (fullConfig.config?.id === instanceId) continue // 默认实例已处理
+        if (this.registry.has(fullConfig.config?.id as string)) continue
+        await this.registry.create(
+          fullConfig.config as unknown as any,
+          (fullConfig.variables || []) as VariableConfig[]
+        )
+        // 如果之前是 running 状态，自动重启
+        if ((fullConfig.config as any)?.status === 'online') {
+          try {
+            this.registry.start(fullConfig.config?.id as string)
+          } catch { /* 静默处理 */ }
         }
       }
 

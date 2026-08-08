@@ -4,6 +4,7 @@ import { optionalAuth } from '../auth/middleware'
 import { ConfigManager } from '../config/config-manager'
 import { DeviceInstanceConfig } from '../types/device'
 import { validateInstanceId } from '../middleware/errorHandler'
+import { instanceStore } from '../services/instance-store'
 
 let registry: InstanceRegistry
 let configManager: ConfigManager
@@ -45,22 +46,20 @@ router.get('/instances', optionalAuth, async (_req: Request, res: Response) => {
   try {
     const runningInstances = registry.getAll()
     
-    // 合并运行中实例和持久化索引
-    const persistedIds = await configManager.listPersistedInstanceIds()
-    const indexData = await configManager.getAllInstanceConfigs()
+    // 从 NeDB 获取所有实例摘要（单一数据源，不再有目录/索引不一致问题）
+    const summaries = await instanceStore.getAllSummaries()
     
     const instanceMap = new Map<string, any>()
     
     // 先加入持久化的实例
-    for (const id of persistedIds) {
-      const idx = indexData[id] as any
+    for (const [id, summary] of Object.entries(summaries)) {
       const regInst = runningInstances.find(i => i.instanceId === id)
       instanceMap.set(id, {
         instanceId: id,
-        name: idx?.name || id,
+        name: summary.name || id,
         status: regInst?.status || 'offline',
-        deviceType: idx?.deviceType || 'plc',
-        createdAt: idx?.createdAt || ''
+        deviceType: summary.deviceType || 'plc',
+        createdAt: summary.createdAt || ''
       })
     }
     
@@ -102,22 +101,32 @@ router.get('/instances/:instanceId', optionalAuth, validateInstanceId, async (re
   try {
     const { instanceId } = req.params
     const inst = registry.get(instanceId)
-    const fullConfig = await configManager.getInstanceFullConfig(instanceId)
-    
-    res.json({
-      code: 200,
-      message: 'OK',
-      data: {
-        instanceId,
-        config: fullConfig?.config || inst?.config || null,
-        status: inst?.status || 'offline',
-        variableCount: Array.isArray(fullConfig?.variables) ? fullConfig.variables.length : 0,
-        createdAt: (fullConfig?.config as any)?.createdAt || '',
-        startedAt: inst?.startedAt || undefined,
-        viewUrl: '',
-      },
-      timestamp: Date.now()
-    })
+    const fullConfig = await instanceStore.getFullConfig(instanceId)
+    //console.log(`[Instance] Full config: ${JSON.stringify(fullConfig, null, 2)}`)
+    //console.log(`[Instance] Inst: `, inst)
+    if(fullConfig && inst) {
+      res.json({
+        code: 200,
+        message: 'OK',
+        data: {
+          instanceId,
+          config: fullConfig?.config || inst?.config || null,
+          status: inst?.status || 'offline',
+          variableCount: Array.isArray(fullConfig?.variables) ? fullConfig.variables.length : 0,
+          createdAt: (fullConfig?.config as any)?.createdAt || '',
+          startedAt: inst?.startedAt || undefined,
+          viewUrl: '',
+        },
+        timestamp: Date.now()
+      })
+    } else {
+      res.status(404).json({
+        code: 40400,
+        message: '实例不存在',
+        data: null,
+        timestamp: Date.now()
+      })
+    }
   } catch (error: any) {
     res.status(500).json({
       code: 50000,
@@ -125,6 +134,7 @@ router.get('/instances/:instanceId', optionalAuth, validateInstanceId, async (re
       data: null,
       timestamp: Date.now()
     })
+    console.error(error)
   }
 })
 
@@ -146,7 +156,7 @@ router.post('/instances', optionalAuth, async (req: Request, res: Response) => {
     }
 
     // 409 门控：检查ID是否已存在
-    const existing = await configManager.getInstanceFullConfig(id)
+    const existing = await instanceStore.exists(id)
     const existingRunning = registry.get(id)
     if (existing || existingRunning) {
       res.status(409).json({
@@ -172,7 +182,7 @@ router.post('/instances', optionalAuth, async (req: Request, res: Response) => {
     }
 
     // 持久化保存
-    await configManager.saveInstanceFullConfig(id, config as unknown as Record<string, unknown>, [])
+    await instanceStore.saveFullConfig(id, config as unknown as Record<string, unknown>, [])
 
     // 创建默认为离线，不启动
     await registry.create(config, [])
@@ -199,7 +209,7 @@ router.post('/instances', optionalAuth, async (req: Request, res: Response) => {
 router.get('/instances/:instanceId/config', optionalAuth, validateInstanceId, async (req: Request, res: Response) => {
   try {
     const { instanceId } = req.params
-    const fullConfig = await configManager.getInstanceFullConfig(instanceId)
+    const fullConfig = await instanceStore.getFullConfig(instanceId)
     
     if (!fullConfig) {
       res.status(404).json({
@@ -234,7 +244,7 @@ router.put('/instances/:instanceId/config', optionalAuth, validateInstanceId, as
   try {
     const { instanceId } = req.params
     
-    const fullConfig = await configManager.getInstanceFullConfig(instanceId)
+    const fullConfig = await instanceStore.getFullConfig(instanceId)
     if (!fullConfig) {
       res.status(404).json({
         code: 40401,
@@ -261,8 +271,8 @@ router.put('/instances/:instanceId/config', optionalAuth, validateInstanceId, as
       updatedAt: now,
     }
 
-    // 持久化（saveInstanceConfig 内部保留 variables 不变）
-    await configManager.saveInstanceConfig(updatedConfig as unknown as Record<string, unknown>)
+    // 持久化（saveConfig 内部只更新 config，不动 variables）
+    await instanceStore.saveConfig(updatedConfig as unknown as Record<string, unknown>)
 
     // 如果实例正在运行，同步更新注册表中内存配置
     if (registry.has(instanceId)) {
@@ -291,7 +301,7 @@ router.put('/instances/:instanceId/config', optionalAuth, validateInstanceId, as
 router.get('/instances/:instanceId/variables', optionalAuth, validateInstanceId, async (req: Request, res: Response) => {
   try {
     const { instanceId } = req.params
-    const variables = await configManager.getInstanceVariables(instanceId)
+    const variables = await instanceStore.getVariables(instanceId)
     
     res.json({
       code: 200,
@@ -327,20 +337,26 @@ router.put('/instances/:instanceId/variables', optionalAuth, validateInstanceId,
       return
     }
 
-    await configManager.saveInstanceVariables(instanceId, variables)
-
     // 如果实例正在运行，同步变量
     const inst = registry.get(instanceId)
     if (inst) {
+      await instanceStore.saveVariables(instanceId, variables)
       inst.variableManager.syncWithConfig(variables)
+      res.json({
+        code: 200,
+        message: '变量配置更新成功',
+        data: { variableCount: variables.length },
+        timestamp: Date.now()
+      })
+    } else {
+      res.status(404).json({
+        code: 40401,
+        message: '实例不存在',
+        data: null,
+        timestamp: Date.now()
+      })
     }
 
-    res.json({
-      code: 200,
-      message: '变量配置更新成功',
-      data: { variableCount: variables.length },
-      timestamp: Date.now()
-    })
   } catch (error: any) {
     res.status(500).json({
       code: 50000,
@@ -357,14 +373,22 @@ router.put('/instances/:instanceId/variables', optionalAuth, validateInstanceId,
 router.post('/instances/:instanceId/start', optionalAuth, validateInstanceId, (req: Request, res: Response) => {
   try {
     const { instanceId } = req.params
-    registry.start(instanceId)
-
-    res.json({
-      code: 200,
-      message: `实例 "${instanceId}" 已启动`,
-      data: { status: 'running' },
-      timestamp: Date.now()
-    })
+    if(registry.has(instanceId)) {
+      registry.start(instanceId)
+      res.json({
+        code: 200,
+        message: `实例 "${instanceId}" 已启动`,
+        data: { status: 'running' },
+        timestamp: Date.now()
+      })
+    } else {
+      res.status(404).json({
+        code: 40401,
+        message: '实例不存在',
+        data: null,
+        timestamp: Date.now()
+      })
+    }
   } catch (error: any) {
     res.status(error.message?.includes('not found') ? 404 : 500).json({
       code: error.message?.includes('not found') ? 40401 : 50000,
@@ -418,7 +442,7 @@ router.delete('/instances/:instanceId', optionalAuth, validateInstanceId, async 
     }
 
     registry.remove(instanceId)
-    await configManager.removeInstanceConfig(instanceId)
+    await instanceStore.remove(instanceId)
 
     res.json({
       code: 200,

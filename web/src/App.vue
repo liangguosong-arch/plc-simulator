@@ -52,9 +52,8 @@ async function handleInstanceChange(event: Event) {
   const target = event.target as HTMLSelectElement
   const newId = target.value
   if (newId !== currentInstanceId.value) {
-    await instanceStore.switchInstance(newId)
     variableStore.stopRealtimeUpdate()
-    await variableStore.loadConfig()
+    await instanceStore.switchInstance(newId)
     variableStore.startRealtimeUpdate()
   }
 }
@@ -67,12 +66,29 @@ function handleCloseLogin() {
   uiStore.closeLoginModal()
 }
 
-// 加载实例数据并启动实时更新
-async function initInstanceData() {
+// 启动/重置当前实例的实时轮询（switchInstance 已统一加载数据）
+function initInstanceData() {
   variableStore.stopRealtimeUpdate()
-  await variableStore.loadConfig()
-  await variableStore.loadDeviceInstance()
   variableStore.startRealtimeUpdate()
+}
+
+async function switchToDefaultInstance(urlInstanceId: string | undefined) {
+    if (urlInstanceId) {
+    // URL 指定了 instanceId：直接打开该实例
+    await instanceStore.switchInstance(urlInstanceId)
+    initInstanceData()
+  } else if (isAdmin.value) {
+    // 管理员 + 无 URL 参数：使用默认实例 '0'
+    await instanceStore.switchInstance(instanceStore.instances[0].instanceId)
+    initInstanceData()
+  } else {
+    // 非管理员：检查实例 '0' 是否存在
+    if (instances.value.some(i => i.instanceId === '0')) {
+      await instanceStore.switchInstance('0')
+      initInstanceData()
+    }
+    // 否则 noAvailableInstance 为 true，不加载任何实例
+  }
 }
 
 // Lifecycle
@@ -88,23 +104,8 @@ onMounted(async () => {
 
   // 3. 根据 URL 参数和角色决定目标实例
   const urlInstanceId = route.query.instanceId as string | undefined
-
-  if (urlInstanceId) {
-    // URL 指定了 instanceId：直接打开该实例
-    await instanceStore.switchInstance(urlInstanceId)
-    await initInstanceData()
-  } else if (isAdmin.value) {
-    // 管理员 + 无 URL 参数：使用默认实例 '0'
-    await instanceStore.switchInstance('0')
-    await initInstanceData()
-  } else {
-    // 非管理员：检查实例 '0' 是否存在
-    if (instances.value.some(i => i.instanceId === '0')) {
-      await instanceStore.switchInstance('0')
-      await initInstanceData()
-    }
-    // 否则 noAvailableInstance 为 true，不加载任何实例
-  }
+  console.log('urlInstanceId', urlInstanceId)
+  await switchToDefaultInstance(urlInstanceId)
 
   ready.value = true
 })
@@ -116,20 +117,7 @@ watch(
     if (!ready.value) return
 
     const id = newId as string | undefined
-    if (id) {
-      // URL 新增了 instanceId，切换到指定实例
-      await instanceStore.switchInstance(id)
-      await initInstanceData()
-    } else if (!hasUrlInstanceId.value) {
-      // URL 移除了 instanceId，根据角色重新决定目标实例
-      if (isAdmin.value) {
-        await instanceStore.switchInstance('0')
-        await initInstanceData()
-      } else if (instances.value.some(i => i.instanceId === '0')) {
-        await instanceStore.switchInstance('0')
-        await initInstanceData()
-      }
-    }
+    switchToDefaultInstance(id)
   }
 )
 </script>

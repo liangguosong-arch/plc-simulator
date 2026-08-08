@@ -1,52 +1,41 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useVariableStore } from '@/stores/variables'
 import { useInstanceStore } from '@/stores/instances'
-import { useUiStore } from '@/stores/ui'
 import VariablesPanel from '@/components/VariablesPanel.vue'
 import DeviceStatusPanel from '@/components/DeviceStatusPanel.vue'
 
 const variableStore = useVariableStore()
 const instanceStore = useInstanceStore()
-const uiStore = useUiStore()
 
 const { deviceInstance, connectionStatus, lastUpdate } = storeToRefs(variableStore)
-const { currentInstanceId } = storeToRefs(instanceStore)
+const { loadError } = storeToRefs(instanceStore)
 
 const activeTab = ref('variables')
-const deviceDisplayName = ref('Loading...')
-const deviceModelInfo = ref('')
 
-function updateDeviceInfo() {
+// 从 instanceStore.currentDeviceInstance 派生（单一真相源）
+const deviceDisplayName = computed(() =>
+  deviceInstance.value?.instanceName || 'Loading...'
+)
+const deviceModelInfo = computed(() => {
   if (deviceInstance.value) {
-    deviceDisplayName.value = deviceInstance.value.instanceName
-    deviceModelInfo.value = `${deviceInstance.value.manufacturer} | ${deviceInstance.value.series} | ${deviceInstance.value.deviceModel}`
-  } else {
-    deviceDisplayName.value = 'Loading...'
-    deviceModelInfo.value = ''
+    return `${deviceInstance.value.manufacturer} | ${deviceInstance.value.series} | ${deviceInstance.value.deviceModel}`
   }
-}
-
-watch(deviceInstance, updateDeviceInfo)
-watch(currentInstanceId, async (newId, oldId) => {
-  if (newId === oldId) return
-  variableStore.stopRealtimeUpdate()
-  await variableStore.loadConfig()
-  await variableStore.loadDeviceInstance()
-  variableStore.startRealtimeUpdate()
-  updateDeviceInfo()
+  return ''
 })
 
-onMounted(async () => {
-  try {
-    await variableStore.loadConfig()
-    await variableStore.loadDeviceInstance()
-    variableStore.startRealtimeUpdate()
-    updateDeviceInfo()
-  } catch (e) {
-    uiStore.showToast('Failed to load instance data', 'error')
-  }
+watch(() => deviceInstance.value?.instanceName, (newValue, oldValue) => {
+  console.log('deviceInstance changed:', newValue, oldValue)
+})
+
+// 实例不存在标志
+const instanceNotFound = computed(() => loadError.value === 'not_found')
+
+// App.vue 已通过 switchInstance 统一加载实例数据，
+// HomePage 仅负责启动/停止实时轮询
+onMounted(() => {
+  variableStore.startRealtimeUpdate()
 })
 
 onBeforeUnmount(() => {
@@ -57,14 +46,14 @@ onBeforeUnmount(() => {
 <template>
   <div class="home-page">
     <!-- 状态栏 -->
-    <div class="status-bar">
+    <div v-if="!instanceNotFound" class="status-bar">
       <div class="status-item">
         <span class="label">实例:</span>
         <span class="value">{{ instanceStore.currentInstanceName }}</span>
       </div>
       <div class="status-item">
-        <span class="label">设备:</span>
-        <span class="value">{{ deviceDisplayName }}</span>
+        <span class="label">ID:</span>
+        <span class="value">{{ deviceInstance?.id }}</span>
       </div>
       <div class="status-item">
         <span class="label">型号:</span>
@@ -82,29 +71,40 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 标签页 -->
-    <div class="tabs">
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'variables' }"
-        @click="activeTab = 'variables'"
-      >
-        📊 Variables
-      </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'status' }"
-        @click="activeTab = 'status'"
-      >
-        📈 Device Status
-      </button>
+    <!-- 实例不存在提示 -->
+    <div v-if="instanceNotFound" class="not-found">
+      <div class="not-found-card">
+        <span class="not-found-icon">⚠️</span>
+        <span class="not-found-title">实例不存在</span>
+        <p class="not-found-hint">请检查 URL 或从左侧选择其他实例</p>
+      </div>
     </div>
 
-    <!-- 内容区 -->
-    <div class="tab-content">
-      <VariablesPanel v-if="activeTab === 'variables'" />
-      <DeviceStatusPanel v-if="activeTab === 'status'" />
-    </div>
+    <template v-else>
+      <!-- 标签页 -->
+      <div class="tabs">
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'variables' }"
+          @click="activeTab = 'variables'"
+        >
+          📊 Variables
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'status' }"
+          @click="activeTab = 'status'"
+        >
+          📈 Device Status
+        </button>
+      </div>
+
+      <!-- 内容区 -->
+      <div class="tab-content">
+        <VariablesPanel v-if="activeTab === 'variables'" />
+        <DeviceStatusPanel v-if="activeTab === 'status'" />
+      </div>
+    </template>
   </div>
 </template>
 

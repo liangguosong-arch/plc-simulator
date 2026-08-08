@@ -27,12 +27,14 @@ export class DatabaseManager {
   private static instance: DatabaseManager
   private dbPath: string
   
-  // 五个集合实例
+  // 七个集合实例
   private manufacturersDB: Datastore<any>
   private seriesDB: Datastore<any>
   private plcDevicesDB: Datastore<any>
   private hmiDevicesDB: Datastore<any>
   private variablesDB: Datastore<any>
+  private instancesDB: Datastore<any>
+  private instanceVariablesDB: Datastore<any>
   
   private constructor() {
     this.dbPath = path.join(__dirname, '../../data/nedb')
@@ -43,6 +45,8 @@ export class DatabaseManager {
     this.plcDevicesDB = this.createCollection('plc-devices')
     this.hmiDevicesDB = this.createCollection('hmi-devices')
     this.variablesDB = this.createCollection('variables')
+    this.instancesDB = this.createCollection('instances')
+    this.instanceVariablesDB = this.createCollection('instance-variables')
   }
   
   static getInstance(): DatabaseManager {
@@ -204,6 +208,12 @@ export class DatabaseManager {
     this.variablesDB.ensureIndex({ fieldName: 'type' })
     this.variablesDB.ensureIndex({ fieldName: 'value' })
     
+    // instances
+    this.instancesDB.ensureIndex({ fieldName: 'instanceId', unique: true })
+    
+    // instance-variables
+    this.instanceVariablesDB.ensureIndex({ fieldName: 'instanceId', unique: true })
+    
     console.log('[DatabaseManager] All indexes created')
   }
   
@@ -228,6 +238,14 @@ export class DatabaseManager {
   
   getVariablesDB(): Datastore<any> {
     return this.variablesDB
+  }
+  
+  getInstancesDB(): Datastore<any> {
+    return this.instancesDB
+  }
+  
+  getInstanceVariablesDB(): Datastore<any> {
+    return this.instanceVariablesDB
   }
   
   /**
