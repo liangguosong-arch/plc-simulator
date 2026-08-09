@@ -440,6 +440,15 @@ router.delete('/instances/:instanceId', optionalAuth, validateInstanceId, async 
       })
       return
     }
+    if(!registry.has(instanceId)) {
+      res.status(404).json({
+        code: 40401,
+        message: '实例不存在',
+        data: null,
+        timestamp: Date.now()
+      })
+      return
+    }
 
     registry.remove(instanceId)
     await instanceStore.remove(instanceId)
