@@ -79,8 +79,9 @@ async function switchToDefaultInstance(urlInstanceId: string | undefined) {
     initInstanceData()
   } else if (isAdmin.value) {
     // 管理员 + 无 URL 参数：使用默认实例 '0'
-    await instanceStore.switchInstance(instanceStore.instances[0].instanceId)
-    initInstanceData()
+    //await instanceStore.switchInstance(instanceStore.instances[0].instanceId)
+    //initInstanceData()
+    goToInstanceManager()
   } else {
     // 非管理员：检查实例 '0' 是否存在
     if (instances.value.some(i => i.instanceId === '0')) {

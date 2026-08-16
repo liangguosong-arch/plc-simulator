@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { instancesApi, deviceInstanceApi } from '@/api'
+import { instancesApi } from '@/api'
 import type { InstanceSummary, Variable, DeviceInstance } from '@/types'
 
 export const useInstanceStore = defineStore('instances', () => {
@@ -58,9 +58,9 @@ export const useInstanceStore = defineStore('instances', () => {
 
       // 加载设备实例信息（非关键，可能不存在）
       try {
-        const deviceResult = await deviceInstanceApi.getInstance(instanceId)
+        const deviceResult = await instancesApi.getInstance(instanceId)
         if (deviceResult.code === 200 && deviceResult.data) {
-          currentDeviceInstance.value = deviceResult.data
+          currentDeviceInstance.value = deviceResult.data.config
         }
       } catch (e: any) {
         console.warn(`[InstanceStore] No device instance for ${instanceId}:`, e?.response?.status)

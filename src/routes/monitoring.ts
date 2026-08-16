@@ -3,22 +3,14 @@ import { InstanceRegistry } from '../core/instance-registry'
 import { optionalAuth } from '../auth/middleware'
 import { validateInstanceId } from '../middleware/errorHandler'
 import { ApiResponse } from '../types/api'
-import { ConfigManager } from '../config/config-manager'
 
 const router = Router()
 
 // 依赖注入
 let registry: InstanceRegistry
-let configManager: ConfigManager
 
-export function initializeMonitoring(
-  reg: InstanceRegistry,
-  cfgManager?: ConfigManager
-) {
+export function initializeMonitoring(reg: InstanceRegistry) {
   registry = reg
-  if (cfgManager) {
-    configManager = cfgManager
-  }
 }
 
 // 辅助：从 registry 获取实例，不存在则返回 404
@@ -47,7 +39,7 @@ router.get('/devices/instances/:instanceId', validateInstanceId, async (req, res
   try {
     const { instanceId } = req.params
 
-    // 优先从注册表获取
+    // 从注册表获取运行态实例
     const inst = registry.get(instanceId)
     if (inst) {
       return res.json({
@@ -64,19 +56,6 @@ router.get('/devices/instances/:instanceId', validateInstanceId, async (req, res
       } as ApiResponse)
     }
 
-    // 回退到配置文件
-    if (configManager) {
-      const config = await configManager.getConfig()
-      if (config.deviceInstance && config.deviceInstance.id === instanceId) {
-        return res.json({
-          code: 200,
-          data: config.deviceInstance,
-          message: 'success',
-          timestamp: Date.now()
-        } as ApiResponse)
-      }
-    }
-
     res.status(404).json({
       code: 40401,
       data: null,
@@ -88,59 +67,6 @@ router.get('/devices/instances/:instanceId', validateInstanceId, async (req, res
       code: 50000,
       data: null,
       message: `获取设备实例失败: ${error.message}`,
-      timestamp: Date.now()
-    } as ApiResponse)
-  }
-})
-
-/**
- * PUT /api/v1/devices/instances/:instanceId
- * 更新设备实例信息
- */
-router.put('/devices/instances/:instanceId', validateInstanceId, async (req, res) => {
-  try {
-    if (!configManager) {
-      return res.status(500).json({
-        code: 50000,
-        data: null,
-        message: '配置管理器未初始化',
-        timestamp: Date.now()
-      } as ApiResponse)
-    }
-
-    const updates = req.body
-    const config = await configManager.getConfig()
-    const currentInstance = config.deviceInstance
-
-    if (!currentInstance) {
-      return res.status(404).json({
-        code: 40401,
-        data: null,
-        message: '设备实例不存在',
-        timestamp: Date.now()
-      } as ApiResponse)
-    }
-
-    const updatedInstance = {
-      ...currentInstance,
-      ...updates,
-      id: currentInstance.id,
-      updatedAt: new Date().toISOString()
-    }
-
-    await configManager.saveConfig({ deviceInstance: updatedInstance })
-
-    res.json({
-      code: 200,
-      data: updatedInstance,
-      message: '设备实例信息已更新',
-      timestamp: Date.now()
-    } as ApiResponse)
-  } catch (error: any) {
-    res.status(500).json({
-      code: 50000,
-      data: null,
-      message: `更新设备实例失败: ${error.message}`,
       timestamp: Date.now()
     } as ApiResponse)
   }

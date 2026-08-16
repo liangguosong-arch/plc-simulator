@@ -2,7 +2,6 @@ import axios from 'axios'
 import type {
   LoginRequest,
   LoginResponse,
-  ConfigResponse,
   Variable,
   DeviceInstance,
   InstanceSummary,
@@ -49,41 +48,6 @@ export const authApi = {
   // 登录
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post('/auth/login', data)
-    return response.data
-  }
-}
-
-/**
- * 配置管理 API（已废弃，保留向后兼容）
- * @deprecated 使用 instancesApi.getInstanceConfig / updateInstanceConfig 替代
- */
-export const configApi = {
-  // 获取默认实例配置
-  getConfig: async (): Promise<ConfigResponse> => {
-    const response = await apiClient.get('/instances/0/config')
-    return response.data
-  },
-
-  // 保存默认实例变量
-  saveConfig: async (variables: Variable[]): Promise<ApiResponse> => {
-    const response = await apiClient.put('/instances/0/variables', { variables })
-    return response.data
-  }
-}
-
-/**
- * 设备实例 API
- */
-export const deviceInstanceApi = {
-  // 获取设备实例信息
-  getInstance: async (instanceId: string = '0'): Promise<ApiResponse<DeviceInstance>> => {
-    const response = await apiClient.get(`/devices/instances/${instanceId}`)
-    return response.data
-  },
-
-  // 更新设备实例信息
-  updateInstance: async (instanceId: string, updates: Partial<DeviceInstance>): Promise<ApiResponse<DeviceInstance>> => {
-    const response = await apiClient.put(`/devices/instances/${instanceId}`, updates)
     return response.data
   }
 }

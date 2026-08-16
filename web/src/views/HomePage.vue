@@ -14,10 +14,7 @@ const { loadError } = storeToRefs(instanceStore)
 
 const activeTab = ref('variables')
 
-// 从 instanceStore.currentDeviceInstance 派生（单一真相源）
-const deviceDisplayName = computed(() =>
-  deviceInstance.value?.instanceName || 'Loading...'
-)
+
 const deviceModelInfo = computed(() => {
   if (deviceInstance.value) {
     return `${deviceInstance.value.manufacturer} | ${deviceInstance.value.series} | ${deviceInstance.value.deviceModel}`

@@ -6,7 +6,6 @@ import * as fs from 'fs'
 
 // 导入模块
 import { SubscriptionManager } from './websocket/subscription-manager'
-import { ConfigManager } from './config/config-manager'
 import { DatabaseManager } from './database/database-manager'
 import { getInstanceRegistry, InstanceRegistry } from './core/instance-registry'
 import { instanceStore } from './services/instance-store'
@@ -16,7 +15,7 @@ import authRouter from './routes/auth'
 import monitoringRouter, { initializeMonitoring } from './routes/monitoring'
 import controlRouter, { initializeControl } from './routes/control'
 import deviceCatalogRouter from './routes/device-catalog'
-import projectsRouter, { setCurrentProjectPath, getCurrentProjectPath, initializeProjectsRouter } from './routes/projects'
+import projectsRouter, { initializeProjectsRouter } from './routes/projects'
 import instancesRouter, { initializeInstancesRouter } from './routes/instances'
 
 // 类型
@@ -35,7 +34,6 @@ export class PLCSimulatorServer {
   private host: string
 
   // 核心模块
-  private configManager: ConfigManager
   private databaseManager: DatabaseManager
   private registry: InstanceRegistry
   private subscriptionManager: SubscriptionManager
@@ -47,11 +45,10 @@ export class PLCSimulatorServer {
     this.server = http.createServer(this.app)
 
     // 初始化模块
-    this.configManager = new ConfigManager()
     this.databaseManager = DatabaseManager.getInstance()
     this.registry = getInstanceRegistry()
 
-    // SubscriptionManager 将在 start() 中初始化（需要 config 中的 instanceId）
+    // SubscriptionManager 将在 start() 中初始化（需要 registry）
     this.subscriptionManager = null!
 
     this.setupMiddleware()
@@ -117,16 +114,14 @@ export class PLCSimulatorServer {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath)
       } else {
-        const instanceId = this.configManager.getInstanceId()
         res.json({
           message: 'PLC Simulator Server is running',
           version: '1.0.0',
-          instanceId,
           endpoints: {
             auth: '/api/v1/auth/login',
-            config: '/api/v1/config',
-            monitoring: `/api/v1/devices/instances/${instanceId}/status`,
-            websocket: `ws://localhost:${this.port}/ws/devices/instances/${instanceId}/subscribe`
+            instances: '/api/v1/instances',
+            monitoring: '/api/v1/devices/instances/:instanceId/status',
+            websocket: `/ws/devices/instances/:instanceId/subscribe`
           }
         })
       }
@@ -149,61 +144,34 @@ export class PLCSimulatorServer {
       console.log('╚═══════════════════════════════════════════════════════════╝')
       console.log('')
 
-      // 初始化配置管理器
-      console.log('[Server] Initializing configuration manager...')
-      await this.configManager.initialize()
-      const config = await this.configManager.getConfig()
-      const instanceId = config.deviceInstance?.id || '0'
-
       // 初始化数据库管理器（必须在实例恢复之前，因为实例数据存储在 NeDB 中）
       console.log('[Server] Initializing database manager...')
       await this.databaseManager.initialize()
 
       // 恢复持久化的实例（从 NeDB 加载，使用批量查询避免 N+1）
+      // 默认实例由 `npm run seed` 提供，代码中不再自动创建
       console.log(`[Server] Loading persisted instances...`)
       const allFullConfigs = await instanceStore.getAllFullConfigs()
-      
-      // 查找默认实例
-      const defaultFullConfig = allFullConfigs.find(d => d.config?.id === instanceId)
-      
-      if (defaultFullConfig) {
-        // 从 NeDB 恢复默认实例
-        await this.registry.create(
-          defaultFullConfig.config as unknown as any,
-          (defaultFullConfig.variables || []) as VariableConfig[]
-        )
-      } else {
-        // 首次启动：用 config.json 创建默认实例并持久化到 NeDB
-        await this.registry.create(
-          config.deviceInstance!,
-          config.variables || []
-        )
-        await instanceStore.saveFullConfig(
-          instanceId,
-          config.deviceInstance as unknown as Record<string, unknown>,
-          config.variables || []
-        )
-      }
 
-      // 恢复其他持久化的实例（只创建，不自动启动）
       for (const fullConfig of allFullConfigs) {
-        if (fullConfig.config?.id === instanceId) continue // 默认实例已处理
-        if (this.registry.has(fullConfig.config?.id as string)) continue
+        const configId = fullConfig.config?.id as string
+        if (!configId || this.registry.has(configId)) continue
         await this.registry.create(
           fullConfig.config as unknown as any,
           (fullConfig.variables || []) as VariableConfig[]
         )
-        // 如果之前是 running 状态，自动重启
+        // 如果之前是 online 状态，自动重启
         if ((fullConfig.config as any)?.status === 'online') {
           try {
-            this.registry.start(fullConfig.config?.id as string)
+            this.registry.start(configId)
           } catch { /* 静默处理 */ }
         }
       }
 
-      // 启动默认实例
-      console.log('[Server] Starting default instance...')
-      this.registry.start(instanceId)
+      // 若没有任何实例，提示用户执行 seed 脚本初始化示例数据
+      if (this.registry.getAll().length === 0) {
+        console.warn('[Server] 未找到任何已持久化的实例，请执行 `npm run seed` 初始化示例数据')
+      }
 
       // 初始化WebSocket订阅管理（P4: 直接传入 registry 支持多实例路由）
       this.subscriptionManager = new SubscriptionManager(this.registry)
@@ -211,10 +179,10 @@ export class PLCSimulatorServer {
       this.subscriptionManager.initialize(this.server)
       this.subscriptionManager.startBroadcast()
 
-      // 初始化路由依赖注入（去除了旧 configRouter）
-      initializeMonitoring(this.registry, this.configManager)
+      // 初始化路由依赖注入（去除了旧 configRouter / ConfigManager）
+      initializeMonitoring(this.registry)
       initializeControl(this.registry)
-      initializeInstancesRouter(this.registry, this.configManager)
+      initializeInstancesRouter(this.registry)
       initializeProjectsRouter(this.subscriptionManager.getWSS())
 
       // 启动HTTP服务器
@@ -223,9 +191,9 @@ export class PLCSimulatorServer {
         console.log('┌─────────────────────────────────────────────────────┐')
         console.log(`│  Server listening on http://${this.host}:${this.port}       │`)
         console.log('├─────────────────────────────────────────────────────┤')
-        console.log(`│  Web Interface: http://localhost:${this.port}/             │`)
-        console.log(`│  API Base: http://localhost:${this.port}/api/v1           │`)
-        console.log(`│  WebSocket: ws://localhost:${this.port}/ws/...           │`)
+        console.log(`│  Web Interface: http://${this.host}:${this.port}/             │`)
+        console.log(`│  API Base: http://${this.host}:${this.port}/api/v1           │`)
+//        console.log(`│  WebSocket: ws://localhost:${this.port}/ws/...           │`)
         console.log('├─────────────────────────────────────────────────────┤')
         console.log('│  Default Users:                                        │')
         console.log('│    admin / admin123                                    │')

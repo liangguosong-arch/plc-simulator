@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { variableApi, deviceInstanceApi } from '@/api'
+import { variableApi } from '@/api'
 import { useInstanceStore } from './instances'
 import type { Variable, VariableGroup, DeviceInstance } from '@/types'
 
@@ -179,25 +179,6 @@ export const useVariableStore = defineStore('variables', () => {
     }
   }
 
-  // 更新设备实例（SettingsPanel 依赖，回写 instanceStore 真相源）
-  async function updateDeviceInstance(updates: Partial<DeviceInstance>) {
-    try {
-      const instanceId = getCurrentInstanceId()
-      const result = await deviceInstanceApi.updateInstance(instanceId, updates)
-      if (result.code === 200 && result.data) {
-        instanceStore.currentDeviceInstance = result.data
-      } else {
-        // fallback: 手动合并 updates 到现有设备实例
-        if (instanceStore.currentDeviceInstance) {
-          Object.assign(instanceStore.currentDeviceInstance, updates)
-        }
-      }
-    } catch (error: any) {
-      console.error('Failed to update device instance:', error)
-      throw error
-    }
-  }
-
   return {
     variables,
     deviceInstance,
@@ -215,7 +196,6 @@ export const useVariableStore = defineStore('variables', () => {
     updateManualValue,
     saveConfig,
     saveVariables,
-    updateDeviceInstance,
     startRealtimeUpdate,
     stopRealtimeUpdate,
   }

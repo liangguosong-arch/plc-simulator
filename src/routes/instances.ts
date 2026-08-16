@@ -1,19 +1,17 @@
 import { Router, Request, Response } from 'express'
 import { InstanceRegistry } from '../core/instance-registry'
 import { optionalAuth } from '../auth/middleware'
-import { ConfigManager } from '../config/config-manager'
 import { DeviceInstanceConfig } from '../types/device'
 import { validateInstanceId } from '../middleware/errorHandler'
 import { instanceStore } from '../services/instance-store'
+import { generateInstanceId } from '../utils/instance-id'
 
 let registry: InstanceRegistry
-let configManager: ConfigManager
 
 const router = Router()
 
-export function initializeInstancesRouter(reg: InstanceRegistry, cm: ConfigManager): Router {
+export function initializeInstancesRouter(reg: InstanceRegistry): Router {
   registry = reg
-  configManager = cm
   return router
 }
 
@@ -22,7 +20,7 @@ export function initializeInstancesRouter(reg: InstanceRegistry, cm: ConfigManag
  */
 router.post('/instances/generate-id', optionalAuth, (_req: Request, res: Response) => {
   try {
-    const instanceId = configManager.generateInstanceId()
+    const instanceId = generateInstanceId()
     res.json({
       code: 200,
       message: 'OK',
@@ -430,16 +428,6 @@ router.delete('/instances/:instanceId', optionalAuth, validateInstanceId, async 
   try {
     const { instanceId } = req.params
     
-    // 保护默认实例
-    if (instanceId === '0') {
-      res.status(403).json({
-        code: 40301,
-        message: '默认实例不可删除',
-        data: null,
-        timestamp: Date.now()
-      })
-      return
-    }
     if(!registry.has(instanceId)) {
       res.status(404).json({
         code: 40401,

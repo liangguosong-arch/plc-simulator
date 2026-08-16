@@ -6,8 +6,8 @@
 - ✅ Node.js + Express + TypeScript 服务器
 - ✅ JWT认证与基于角色的访问控制
 - ✅ WebSocket实时数据推送
-- ✅ 配置持久化（lowdb）
-- ✅ 内存数据存储（运行时）
+- ✅ 多实例支持（InstanceRegistry + NeDB 持久化）
+- ✅ 配置持久化（NeDB，`data/nedb/`）
 
 ### 2. API接口实现
 
@@ -65,40 +65,27 @@ plc-simulator/
 │   ├── index.ts                  # 入口文件
 │   ├── server.ts                 # 主服务器类
 │   ├── auth/                     # 认证模块
-│   │   ├── jwt.ts                # JWT工具
-│   │   └── middleware.ts         # 认证中间件
+│   ├── core/                     # 多实例注册表（运行态）
 │   ├── simulator/                # 模拟引擎
-│   │   ├── device-status.ts      # 设备状态模拟
-│   │   └── alarm-generator.ts    # 报警生成器
 │   ├── variables/                # 变量管理
-│   │   ├── variable-manager.ts   # 变量管理器
-│   │   └── value-simulator.ts    # 值模拟引擎
 │   ├── websocket/                # WebSocket管理
-│   │   └── subscription-manager.ts # 订阅管理器
 │   ├── commands/                 # 命令执行
-│   │   └── command-executor.ts   # 命令执行器
-│   ├── config/                   # 配置管理
-│   │   └── config-manager.ts     # 配置管理器
-│   ├── routes/                   # API路由
-│   │   ├── auth.ts               # 认证路由
-│   │   ├── config.ts             # 配置路由
-│   │   ├── monitoring.ts         # 监控路由
-│   │   └── control.ts            # 控制路由
+│   ├── database/                 # NeDB 数据库管理
+│   ├── services/                 # 实例/变量存储服务
+│   ├── routes/                   # API路由（auth/instances/monitoring/control 等）
 │   ├── middleware/               # 中间件
-│   │   └── errorHandler.ts       # 错误处理
 │   └── types/                    # 类型定义
-│       ├── api.ts                # API类型
-│       └── device.ts             # 设备类型
-├── web/                          # Web管理界面
-│   └── index.html                # Vue.js单页应用
+├── scripts/                      # 脚本
+│   ├── migrate-database.ts       # 数据库迁移
+│   └── seed.ts                   # 示例数据种子（npm run seed）
+├── web/                          # Vue 3 前端（Vite）
 ├── data/                         # 运行时数据
-│   └── config.json               # 用户配置(自动生成)
+│   ├── config.json               # 旧单实例配置（已废弃）
+│   └── nedb/                     # NeDB 数据文件（含 instances.db / instance-variables.db）
 ├── docs/                         # 文档
-│   └── API_DOCUMENTATION.md      # API文档
 ├── package.json                  # 项目依赖
 ├── tsconfig.json                 # TypeScript配置
-├── README.md                     # 项目说明
-└── API_TEST.md                   # API测试指南
+└── README.md                     # 项目说明
 ```
 
 ## 🚀 启动说明
@@ -109,9 +96,17 @@ npm run dev
 ```
 服务器将在 http://localhost:8080 启动
 
+### 初始化示例数据（部署后）
+```bash
+npm run seed        # 插入默认实例（id=0）及示例变量，已存在则跳过
+npm run seed:reset  # 先清空实例数据再重新插入
+```
+发行包中已包含生成好的 `data/nedb/instances.db` 与
+`data/nedb/instance-variables.db`，正常部署无需手动执行。
+
 ### 生产模式
 ```bash
-npm run build   # 编译TypeScript
+npm run build   # 编译TypeScript + 前端
 npm start       # 运行编译后的代码
 ```
 
@@ -134,8 +129,13 @@ npm start       # 运行编译后的代码
 PORT=9000 npm run dev
 ```
 
-### 修改变量配置
-编辑 `src/config/config-manager.ts` 中的 `getDefaultVariables()` 方法
+### 修改默认种子数据
+编辑 `scripts/seed.ts` 中的 `DEFAULT_INSTANCE_CONFIG` / `DEFAULT_VARIABLES`，
+然后执行 `npm run seed:reset` 重建。
+
+### 运行时实例数据
+实例与变量持久化在 `data/nedb/`（`instances.db` / `instance-variables.db`），
+随发行包分发，运行时会随用户操作更新。
 
 ### 模拟策略配置
 在Web界面中可以直接修改：
@@ -161,7 +161,7 @@ PORT=9000 npm run dev
 ### 可靠性
 - 优雅关闭处理
 - 错误全局捕获
-- 配置自动保存
+- 实例数据自动持久化（NeDB）
 - 内存泄漏防护
 
 ## 🎯 使用场景
@@ -178,15 +178,13 @@ PORT=9000 npm run dev
 ## 🔍 已知限制
 
 1. ✅ 支持多设备实例模拟（通过 `GET /api/v1/instances` 管理）
-2. 数据不持久化（重启后变量值重置）
+2. ✅ 实例与变量数据持久化（NeDB，`data/nedb/`）
 3. 报警为随机生成（非基于真实阈值）
 4. 无真实的PLC通信协议（仅HTTP/WebSocket）
 
 ## 🚧 未来扩展
 
-- [ ] 多设备实例支持
 - [ ] 真实PLC协议适配器（Modbus, S7等）
-- [ ] 数据持久化（SQLite/MySQL）
 - [ ] Web管理界面增强
 - [ ] 脚本化模拟逻辑
 - [ ] Docker容器化

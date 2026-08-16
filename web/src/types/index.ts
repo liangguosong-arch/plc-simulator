@@ -65,17 +65,6 @@ export interface DeviceInstance {
   updatedAt: string
 }
 
-// 配置响应
-export interface ConfigResponse {
-  code: number
-  message: string
-  data: {
-    variables: Variable[]
-
-    deviceInstance?: DeviceInstance
-  }
-}
-
 // API 通用响应
 export interface ApiResponse<T = any> {
   code: number

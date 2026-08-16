@@ -192,6 +192,19 @@ export class InstanceStore {
     ])
     console.log(`[InstanceStore] Removed instance: ${instanceId}`)
   }
+
+  /**
+   * 清空所有实例及变量数据（seed --reset 使用）。
+   * 注意：NeDB 的 remove 为逻辑删除，若需发行包物理干净，
+   * 请由 seed 脚本在调用后删除对应的 .db 文件，由后续写入重建。
+   */
+  async clearAll(): Promise<void> {
+    await Promise.all([
+      this.promisify<number>(this.instancesDB.remove.bind(this.instancesDB))({}, { multi: true }),
+      this.promisify<number>(this.instanceVariablesDB.remove.bind(this.instanceVariablesDB))({}, { multi: true }),
+    ])
+    console.log('[InstanceStore] Cleared all instance data')
+  }
 }
 
 export const instanceStore = InstanceStore.getInstance()

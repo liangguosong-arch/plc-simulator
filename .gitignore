@@ -28,9 +28,10 @@ npm-debug.log*
 # Data (optional - uncomment if you don't want to commit user configurations)
 # data/
 
-# NeDB runtime data (user-created instances, should not be versioned)
-data/nedb/instances.db
-data/nedb/instance-variables.db
+# NeDB runtime data
+# 说明：instances.db / instance-variables.db 由 `npm run seed` 生成，
+# 作为部署后的示例数据随发行包一并分发，因此纳入版本控制（不在此忽略）。
+# 运行时会随用户操作更新，如无特殊需求请勿手动删除。
 
 # Temporary files
 tmp/
